@@ -2,7 +2,7 @@
 
 One agent doing the whole job is an intern with admin. A factory is lanes, a ticket, and a human who merges.
 
-I run software this way: classify the work, cut tracer-bullet tickets, implement on the checkout, review like you hate the PR, watch CI until green. Then I merge. Agents never merge.
+Build software this way: classify the work, cut tracer-bullet tickets, implement on the checkout, review like you hate the PR, watch CI until green. Review then merge. Agents never merge.
 
 The runner is a plug. Grok, Claude Code, Codex, Cursor. Same `AGENTS.md`, same skills.
 
