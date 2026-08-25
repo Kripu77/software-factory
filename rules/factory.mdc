@@ -1,0 +1,6 @@
+---
+description: Software factory house rules. Use when running a factory lane or /feature /bug /review /ci /telemetry /lead.
+alwaysApply: false
+---
+
+Follow AGENTS.md in this plugin. Never merge. Never git commit --no-verify. Never read .env or .env.local. Only the ticket or PR you were given. Issues live on the owning service. PR title Type/<issue.number>/<short description>.

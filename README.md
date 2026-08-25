@@ -32,17 +32,34 @@ cd software-factory
 ./install.sh
 ```
 
-Links skills into `~/.grok/skills` and `~/.claude/skills`. Drop `AGENTS.md` into each repo the factory should see.
+One pack. Four harnesses.
 
-Point the factory at your product:
+| Harness | How it loads |
+| --- | --- |
+| Cursor | local plugin at `~/.cursor/plugins/local/software-factory` |
+| Claude Code | skills + slash commands under `~/.claude` |
+| Grok | skills under `~/.grok/skills` |
+| Codex | skills under `~/.codex/skills` plus `AGENTS.md` in the checkout |
+
+Then set the product checkout:
 
 ```bash
-export FACTORY_WORKSPACE=/path/to/your/checkout   # or a folder of service clones
-export FACTORY_OWNER=your-github-org              # or your user
-export FACTORY_RUNNER=grok                        # grok | claude | codex
+export FACTORY_WORKSPACE=/path/to/your/checkout
+export FACTORY_OWNER=your-github-org
 ```
 
 ## Run
+
+In Cursor, Claude, Grok, or Codex, invoke the lane:
+
+- `/feature` with owner/repo#issue
+- `/bug` with owner/repo#issue
+- `/review` with owner/repo#pr
+- `/ci` with owner/repo#pr
+- `/telemetry` with the question
+- `/lead` to classify and ticket
+
+Headless / CI still uses the script (never merges):
 
 ```bash
 ./factory.sh feature --repo api --issue 12
@@ -52,8 +69,6 @@ export FACTORY_RUNNER=grok                        # grok | claude | codex
 ./factory.sh telemetry --question "login 500s last 24h"
 ./factory.sh telemetry --question "where does onboarding die, last 7d"
 ```
-
-`--runner` overrides `FACTORY_RUNNER`. `--yes` auto-approves tool calls where the CLI allows it. `ship` runs implement, then review, then CI. Still does not merge.
 
 ## Hard rules
 
