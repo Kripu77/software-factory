@@ -2,7 +2,7 @@
 
 The Telemetry lane does not own a vendor. It brings evidence for two jobs: something is broken, or something in the product is underperforming.
 
-It does not classify. Drop-off on a path might be a bug or a feature. CTO decides.
+It does not classify. Drop-off on a path might be a bug or a feature. The Tech lead decides.
 
 ## Questions
 
@@ -38,4 +38,4 @@ New vendors are a new adapter folder. Same questions. No new lane.
 | Azure App Insights | no | yes | yes | yes | no | custom events, if you named the steps |
 | AWS CloudWatch | no | yes (Logs Insights / X-Ray) | yes | yes | no | no (counts and latency only) |
 
-CTO asks Telemetry before dispatching a Bug when production data exists, and when a Feature might be a performance or drop-off problem rather than a request. Telemetry never merges and never implements product code.
+The Tech lead asks Telemetry before dispatching a Bug when production data exists, and when a Feature might be a performance or drop-off problem rather than a request. Telemetry never merges and never implements product code.

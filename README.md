@@ -16,7 +16,7 @@ Editable source: [`docs/factory.excalidraw`](docs/factory.excalidraw).
 
 | Lane | Job |
 | --- | --- |
-| CTO | Classify. Quiz. Ticket on the owning repo. Dispatch. Do not implement. |
+| Tech lead | Classify. Quiz. Ticket on the owning repo. Dispatch. Do not implement. |
 | Telemetry | Breakage and product performance. Funnels, feature completion, errors, logs, sessions. Evidence only. Never implements. |
 | Bug | Reproduce from evidence, then TDD fix. |
 | Feature | Do not expand the ask. TDD, implement, deslop. |

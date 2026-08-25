@@ -31,7 +31,7 @@ Use glossary terms from `CONTEXT.md`. Do not invent synonyms. Missing `CONTEXT.m
 
 ## Lanes
 
-- CTO: classify, quiz, ticket, dispatch. Do not implement.
+- Tech lead: classify, quiz, ticket, dispatch. Do not implement.
 - Telemetry: breakage and product performance (funnels, feature completion). Evidence only. Do not implement product code. Do not classify.
 - Feature: do not expand the ask.
 - Bug: reproduce, then TDD fix.

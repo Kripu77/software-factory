@@ -12,7 +12,7 @@ Usage:
   factory.sh feature|bug|docs --repo <name> --issue <n> [--owner org] [--runner grok|claude|codex] [--yes]
   factory.sh review|ci        --repo <name> --pr <n>     [--owner org] [--runner ...] [--yes]
   factory.sh ship             --repo <name> --issue <n> --pr <n> [--yes]
-  factory.sh cto              --issue <n> [--repo <name>] [--yes]
+  factory.sh lead             --issue <n> [--repo <name>] [--yes]
   factory.sh telemetry        --question "<what broke>" [--yes]
 
 Never merges. A person merges.
@@ -153,9 +153,9 @@ case "$LANE" in
     "$0" ci --repo "$REPO" --pr "$PR" --owner "$OWNER" --runner "$RUNNER" "${YESFLAG[@]}"
     echo "Ship lane done. A person merges. $(pr_url "$PR")"
     ;;
-  cto)
+  lead|tech-lead|cto)
     need_issue
-    run_agent "$WORKSPACE" "$(cat "$FACTORY/lanes/cto.md")"$'\n'"$HARD"       "Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}."
+    run_agent "$WORKSPACE" "$(cat "$FACTORY/lanes/tech-lead.md")"$'\n'"$HARD"       "Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}."
     ;;
   telemetry)
     need_question
