@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="900" viewBox="0 0 1080 900" role="img" aria-labelledby="title">
+<title id="title">Software factory</title>
+<desc>You classify. CTO tickets. Telemetry is a vendor plug. Bug, Feature, Docs implement. Review. CI. You merge. Runner is a plug: Grok, Claude, Codex, Cursor.</desc>
+<rect width="1080" height="900" fill="#ffffff"/>
+<style>
+text { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif; fill: #1e1e1e; }
+.muted { fill: #868e96; }
+.box { stroke: #1e1e1e; stroke-width: 1.6; }
+.dash { stroke-dasharray: 7 5; stroke: #868e96; fill: none; }
+.arr { stroke: #1e1e1e; stroke-width: 1.5; fill: none; marker-end: url(#m); }
+</style>
+<defs>
+<marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+<path d="M0 0 L10 5 L0 10 z" fill="#1e1e1e"/>
+</marker>
+</defs>
+<rect class="dash" x="80" y="28" width="920" height="92" rx="18" fill="none"/>
+<text class="muted" x="540" y="22" text-anchor="middle" font-size="13">runner is a plug</text>
+<rect class="box" x="110" y="50" width="190" height="52" rx="14" fill="#a5d8ff"/>
+<text x="205.0" y="81.0" text-anchor="middle" font-size="18" font-weight="600">Grok</text>
+<rect class="box" x="322" y="50" width="190" height="52" rx="14" fill="#ffd8a8"/>
+<text x="417.0" y="81.0" text-anchor="middle" font-size="18" font-weight="600">Claude</text>
+<rect class="box" x="534" y="50" width="190" height="52" rx="14" fill="#b2f2bb"/>
+<text x="629.0" y="81.0" text-anchor="middle" font-size="18" font-weight="600">Codex</text>
+<rect class="box" x="746" y="50" width="190" height="52" rx="14" fill="#d0bfff"/>
+<text x="841.0" y="81.0" text-anchor="middle" font-size="18" font-weight="600">Cursor</text>
+<ellipse class="box" cx="540.0" cy="182.0" rx="110.0" ry="32.0" fill="#ffec99"/>
+<text x="540.0" y="175.0" text-anchor="middle" font-size="20" font-weight="600">you</text>
+<text class="muted" x="540.0" y="196.0" text-anchor="middle" font-size="12">classify the work</text>
+<path class="arr" d="M540.0 120.0 L540.0 150.0"/>
+<rect class="box" x="380" y="250" width="320" height="78" rx="14" fill="#a5d8ff"/>
+<text x="540.0" y="282.0" text-anchor="middle" font-size="20" font-weight="600">CTO</text>
+<text class="muted" x="540.0" y="303.0" text-anchor="middle" font-size="12">quiz · ticket · dispatch · never implement</text>
+<path class="arr" d="M540.0 214.0 L540.0 250.0"/>
+<rect class="box" x="40" y="370" width="300" height="250" rx="16" fill="#e9ecef"/>
+<text x="190" y="398" text-anchor="middle" font-size="18" font-weight="600">Telemetry</text>
+<text class="muted" x="190" y="418" text-anchor="middle" font-size="12">evidence, not a vendor</text>
+<rect class="box" x="58" y="438" width="124" height="56" rx="12" fill="#99e9f2"/>
+<text x="120.0" y="471.0" text-anchor="middle" font-size="13" font-weight="600">PostHog</text>
+<rect class="box" x="194" y="438" width="124" height="56" rx="12" fill="#a5d8ff"/>
+<text x="256.0" y="471.0" text-anchor="middle" font-size="13" font-weight="600">Datadog</text>
+<rect class="box" x="58" y="508" width="124" height="56" rx="12" fill="#ffd8a8"/>
+<text x="120.0" y="541.0" text-anchor="middle" font-size="13" font-weight="600">App Insights</text>
+<rect class="box" x="194" y="508" width="124" height="56" rx="12" fill="#ffec99"/>
+<text x="256.0" y="541.0" text-anchor="middle" font-size="13" font-weight="600">CloudWatch</text>
+<rect class="box" x="430" y="370" width="220" height="64" rx="14" fill="#d0bfff"/>
+<text x="540.0" y="395.0" text-anchor="middle" font-size="18" font-weight="600">tickets</text>
+<text class="muted" x="540.0" y="416.0" text-anchor="middle" font-size="12">owning repo  ·  ready-for-agent</text>
+<path class="arr" d="M540.0 328.0 L540.0 370.0"/>
+<rect class="box" x="380" y="480" width="140" height="64" rx="14" fill="#ffc9c9"/>
+<text x="450.0" y="505.0" text-anchor="middle" font-size="16" font-weight="600">Bug</text>
+<text class="muted" x="450.0" y="526.0" text-anchor="middle" font-size="12">reproduce → TDD</text>
+<rect class="box" x="540" y="480" width="150" height="64" rx="14" fill="#b2f2bb"/>
+<text x="615.0" y="505.0" text-anchor="middle" font-size="16" font-weight="600">Feature</text>
+<text class="muted" x="615.0" y="526.0" text-anchor="middle" font-size="12">do not expand</text>
+<rect class="box" x="710" y="480" width="140" height="64" rx="14" fill="#ffec99"/>
+<text x="780.0" y="505.0" text-anchor="middle" font-size="16" font-weight="600">Docs</text>
+<text class="muted" x="780.0" y="526.0" text-anchor="middle" font-size="12">docs only</text>
+<path class="arr" d="M470.0 434.0 L450.0 480.0"/>
+<path class="arr" d="M540.0 434.0 L615.0 480.0"/>
+<path class="arr" d="M610.0 402.0 L780.0 480.0"/>
+<path class="arr" d="M340.0 512.0 L380.0 512.0"/>
+<text class="muted" x="360.0" y="506.0" text-anchor="middle" font-size="11">evidence</text>
+<rect class="box" x="470" y="590" width="240" height="64" rx="14" fill="#ffd8a8"/>
+<text x="590.0" y="615.0" text-anchor="middle" font-size="18" font-weight="600">Review</text>
+<text class="muted" x="590.0" y="636.0" text-anchor="middle" font-size="12">harsh  ·  comments, not patches</text>
+<path class="arr" d="M450.0 544.0 L500.0 590.0"/>
+<path class="arr" d="M615.0 544.0 L590.0 590.0"/>
+<path class="arr" d="M780.0 544.0 L680.0 590.0"/>
+<rect class="box" x="470" y="690" width="240" height="64" rx="14" fill="#99e9f2"/>
+<text x="590.0" y="715.0" text-anchor="middle" font-size="18" font-weight="600">CI</text>
+<text class="muted" x="590.0" y="736.0" text-anchor="middle" font-size="12">gh pr checks until green</text>
+<path class="arr" d="M590.0 654.0 L590.0 690.0"/>
+<ellipse class="box" cx="590.0" cy="825.0" rx="160.0" ry="35.0" fill="#ffec99"/>
+<text x="590.0" y="818.0" text-anchor="middle" font-size="20" font-weight="600">you merge</text>
+<text class="muted" x="590.0" y="839.0" text-anchor="middle" font-size="12">agents never merge</text>
+<path class="arr" d="M590.0 754.0 L590.0 790.0"/>
+</svg>
