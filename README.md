@@ -23,6 +23,7 @@ Editable source: [`docs/factory.excalidraw`](docs/factory.excalidraw).
 | Docs | Docs only. |
 | Review | Harsh maintainability review. Comments, not patches. |
 | CI | `gh pr checks` until green. Failures only. |
+| QA | Smoke or browser-walk a running app. Report only. |
 
 ## Install
 
@@ -56,6 +57,7 @@ In Cursor, Claude, Grok, or Codex, invoke the lane:
 - `/bug` with owner/repo#issue
 - `/review` with owner/repo#pr
 - `/ci` with owner/repo#pr
+- `/qa` with a URL or owner/repo#pr
 - `/telemetry` with the question
 - `/lead` to classify and ticket
 - `/unslop` on any writing
@@ -70,6 +72,7 @@ Headless / CI still uses the script (never merges):
 ./factory.sh ci      --repo api --pr 40
 ./factory.sh telemetry --question "login 500s last 24h"
 ./factory.sh telemetry --question "where does onboarding die, last 7d"
+./factory.sh qa --repo frontend --pr 12 --url http://localhost:3000
 ```
 
 ## Hard rules

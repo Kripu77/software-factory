@@ -14,6 +14,8 @@ Usage:
   factory.sh ship             --repo <name> --issue <n> --pr <n> [--yes]
   factory.sh lead             --issue <n> [--repo <name>] [--yes]
   factory.sh telemetry        --question "<what broke>" [--yes]
+  factory.sh qa               --repo <name> --pr <n> [--url <app>]
+  factory.sh qa               --url <app>
 
 Never merges. A person merges.
 FACTORY_WORKSPACE, FACTORY_OWNER, FACTORY_RUNNER can be set instead of flags.
@@ -38,6 +40,7 @@ shift || usage
 REPO=""
 ISSUE=""
 PR=""
+URL=""
 QUESTION=""
 YES=0
 
@@ -46,6 +49,7 @@ while [[ $# -gt 0 ]]; do
     --repo) REPO="${2:-}"; shift 2 ;;
     --issue) ISSUE="${2:-}"; shift 2 ;;
     --pr) PR="${2:-}"; shift 2 ;;
+    --url) URL="${2:-}"; shift 2 ;;
     --owner) OWNER="${2:-}"; shift 2 ;;
     --runner) RUNNER="${2:-}"; shift 2 ;;
     --question) QUESTION="${2:-}"; shift 2 ;;
@@ -160,6 +164,15 @@ case "$LANE" in
   telemetry)
     need_question
     run_agent "$WORKSPACE" "$(cat "$FACTORY/lanes/telemetry.md")"$'\n'"$HARD"$'\n'"$(cat "$FACTORY/telemetry/CONTRACT.md")"       "Answer this with evidence only: ${QUESTION}. Name the adapter you used. Do not implement product code. Do not merge."
+    ;;
+  qa)
+    [[ -n "$URL" || -n "$PR" ]] || { echo "Need --url <app> or --pr <n>" >&2; exit 1; }
+    if [[ -n "$REPO" ]]; then
+      DIR="$(repo_dir)"
+    else
+      DIR="$WORKSPACE"
+    fi
+    run_agent "$DIR" "$(cat "$FACTORY/lanes/qa.md")"$'\n'"$HARD"       "QA the running app. URL: ${URL:-from the PR / local}. PR: ${PR:-none}. Prefer /run-smoke-tests if a suite exists, else /browser-use. Report only. Do not implement. Do not merge."
     ;;
   *)
     usage

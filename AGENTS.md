@@ -19,6 +19,7 @@ Use glossary terms from `CONTEXT.md`. Do not invent synonyms. Missing `CONTEXT.m
 `/thermo-nuclear-code-quality-review` only when reviewing.
 `/loop-on-ci` only when watching PR checks.
 `/to-tickets` only when breaking work into GitHub issues.
+`/qa` only when testing a running app (smoke or browser). `/run-smoke-tests` and `/browser-use` are the QA skills.
 
 ## Shipping
 
@@ -38,3 +39,4 @@ Use glossary terms from `CONTEXT.md`. Do not invent synonyms. Missing `CONTEXT.m
 - Docs: docs only, no application code.
 - Review: do not implement the fix. Send comments. Do not merge.
 - CI: fix check failures only. Do not merge.
+- QA: smoke or browser-walk a running app. Report only. Do not implement. Do not merge.
