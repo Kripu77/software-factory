@@ -8,7 +8,7 @@ The runner is a plug. Grok, Claude Code, Codex, Cursor. Same `AGENTS.md`, same s
 
 Telemetry is a plug too. It is not an error inbox. It watches breakage and whether the product is actually working: funnels on any path, feature completion, time-to-value. Signup drop-off is one signal. So is onboarding, checkout, invite, the core loop, or a shipped feature nobody finishes. PostHog, Datadog, Azure App Insights, CloudWatch speak the same contract. Swap the vendor. Keep the questions.
 
-![Software factory](docs/factory.svg)
+![Software factory](docs/factory.png)
 
 Editable source: [`docs/factory.excalidraw`](docs/factory.excalidraw).
 
@@ -19,7 +19,7 @@ Editable source: [`docs/factory.excalidraw`](docs/factory.excalidraw).
 | Tech lead | Classify. Quiz. Ticket on the owning repo. Dispatch. Do not implement. |
 | Telemetry | Breakage and product performance. Funnels, feature completion, errors, logs, sessions. Evidence only. Never implements. |
 | Bug | Reproduce from evidence, then TDD fix. |
-| Feature | Do not expand the ask. TDD, implement, deslop. |
+| Feature | Do not expand the ask. TDD, implement, unslop. |
 | Docs | Docs only. |
 | Review | Harsh maintainability review. Comments, not patches. |
 | CI | `gh pr checks` until green. Failures only. |
@@ -38,7 +38,7 @@ One pack. Four harnesses.
 | --- | --- |
 | Cursor | local plugin at `~/.cursor/plugins/local/software-factory` |
 | Claude Code | skills + slash commands under `~/.claude` |
-| Grok | skills under `~/.grok/skills` |
+| Grok Build | plugin at `~/.grok/plugins/software-factory` (`grok plugin install . --trust`) |
 | Codex | skills under `~/.codex/skills` plus `AGENTS.md` in the checkout |
 
 Then set the product checkout:
@@ -58,6 +58,8 @@ In Cursor, Claude, Grok, or Codex, invoke the lane:
 - `/ci` with owner/repo#pr
 - `/telemetry` with the question
 - `/lead` to classify and ticket
+- `/unslop` on any writing
+- `/poteto-mode` for the writing and playbook style
 
 Headless / CI still uses the script (never merges):
 

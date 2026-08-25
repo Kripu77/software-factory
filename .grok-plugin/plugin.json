@@ -1,0 +1,13 @@
+{
+  "name": "software-factory",
+  "version": "1.0.0",
+  "description": "Lanes, tickets, and a human merge. Skills and slash commands for Grok Build.",
+  "author": {
+    "name": "Kripu Khadka"
+  },
+  "homepage": "https://github.com/Kripu77/software-factory",
+  "repository": "https://github.com/Kripu77/software-factory",
+  "license": "MIT",
+  "keywords": ["software-factory", "tdd", "review", "telemetry", "unslop", "poteto-mode"],
+  "category": "developer-tools"
+}

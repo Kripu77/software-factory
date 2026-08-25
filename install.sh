@@ -8,7 +8,7 @@ link_skills() {
   local label="$2"
   mkdir -p "$dest_root"
   local skill dest
-  for skill in tdd implement deslop to-tickets thermo-nuclear-review loop-on-ci; do
+  for skill in tdd implement unslop deslop to-tickets thermo-nuclear-review loop-on-ci poteto-mode; do
     dest="$dest_root/factory-${skill}"
     rm -rf "$dest"
     ln -s "$FACTORY/skills/${skill}" "$dest"
@@ -18,8 +18,18 @@ link_skills() {
 
 echo "Factory: $FACTORY"
 
-# Grok Build CLI
-if [[ -d "${HOME}/.grok" ]] || command -v grok >/dev/null 2>&1; then
+# Grok Build plugin (skills + commands). Copies into ~/.grok/installed-plugins.
+if command -v grok >/dev/null 2>&1; then
+  if grok plugin list 2>/dev/null | grep -q "software-factory"; then
+    grok plugin update software-factory
+    echo "updated grok plugin software-factory"
+  elif grok plugin install "$FACTORY" --trust; then
+    echo "installed grok plugin software-factory"
+  else
+    echo "grok plugin install failed" >&2
+  fi
+  link_skills "${HOME}/.grok/skills" "grok"
+elif [[ -d "${HOME}/.grok" ]]; then
   link_skills "${HOME}/.grok/skills" "grok"
 fi
 
@@ -69,8 +79,8 @@ else
 fi
 
 echo
-echo "Cursor:  /feature /bug /review /ci /telemetry /lead"
+echo "Cursor:  /feature /bug /review /ci /telemetry /lead /unslop /poteto-mode"
 echo "Claude:  same slash commands after restart"
-echo "Grok:    grok, then /tdd /implement or paste a ticket"
+echo "Grok:    grok plugin list, then /feature /unslop /poteto-mode"
 echo "Codex:   AGENTS.md in the checkout"
 echo "CI door: $FACTORY/factory.sh feature --repo <name> --issue N"

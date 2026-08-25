@@ -1,10 +1,8 @@
 ---
-name: deslop
-description: Cut AI tells from any writing. Must always apply. Alias of /unslop.
+name: unslop
+description: Cut AI tells from any writing. Must always apply.
 ---
 # Unslop
-
-`/deslop` is `/unslop`. Same rules.
 
 Edit text to remove AI patterns and add human voice.
 

@@ -10,7 +10,7 @@ Implement only the ticket you were given.
 1. Read CONTEXT-MAP, this repo CONTEXT.md, ADRs, docs/agents if they exist.
 2. Use `/tdd` at pre-agreed seams.
 3. Typecheck often. Run focused tests often. Full suite once at the end.
-4. `/deslop` against main.
+4. `/unslop` against main.
 5. Open or update a PR. Do not merge.
 6. Stop and ask for `/thermo-nuclear-review` then `/loop-on-ci`.
 
