@@ -37,7 +37,7 @@ Remaining triggers:
 
 - Docs, RFCs, readmes, PR descriptions, or commit messages → the **technical-writing** skill (`/technical-writing`).
 
-- Before commit → the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`). In this factory, that is `/unslop`.
+- Before commit → `/unslop`.
 
 - Before review → the **no-comments** skill (`/no-comments`).
 
