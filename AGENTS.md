@@ -35,7 +35,7 @@ Use glossary terms from `CONTEXT.md`. Do not invent synonyms. Missing `CONTEXT.m
 - Tech lead: classify, quiz, ticket, dispatch. Do not implement.
 - Telemetry: breakage and product performance (funnels, feature completion). Evidence only. Do not implement product code. Do not classify.
 - Feature: do not expand the ask.
-- Bug: reproduce, then TDD fix.
+- Bug: reproduce (browser if web), then TDD fix.
 - Docs: docs only, no application code.
 - Review: do not implement the fix. Send comments. Do not merge.
 - CI: fix check failures only. Do not merge.

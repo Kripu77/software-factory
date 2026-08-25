@@ -18,7 +18,7 @@ Editable source: [`docs/factory.excalidraw`](docs/factory.excalidraw).
 | --- | --- |
 | Tech lead | Classify. Quiz. Ticket on the owning repo. Dispatch. Do not implement. |
 | Telemetry | Breakage and product performance. Funnels, feature completion, errors, logs, sessions. Evidence only. Never implements. |
-| Bug | Reproduce from evidence, then TDD fix. |
+| Bug | Reproduce from evidence. Web bugs: browser first, then TDD fix. |
 | Feature | Do not expand the ask. TDD, implement, unslop. |
 | Docs | Docs only. |
 | Review | Harsh maintainability review. Comments, not patches. |
