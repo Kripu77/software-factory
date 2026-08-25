@@ -16,7 +16,7 @@ Use glossary terms from `CONTEXT.md`. Do not invent synonyms. Missing `CONTEXT.m
 ## Skills
 
 `/tdd`, `/implement`, `/unslop` for product code. `/poteto-mode` for the writing and playbook style.
-`/thermo-nuclear-review` only when reviewing.
+`/thermo-nuclear-code-quality-review` only when reviewing.
 `/loop-on-ci` only when watching PR checks.
 `/to-tickets` only when breaking work into GitHub issues.
 

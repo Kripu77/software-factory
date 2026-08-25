@@ -129,7 +129,7 @@ case "$LANE" in
   review)
     need_pr
     DIR="$(repo_dir)"
-    run_agent "$DIR" "$(cat "$FACTORY/lanes/review.md")"$'\n'"$HARD"       "Review $(pr_url "$PR") only. Use /thermo-nuclear-review. Do not implement. Do not merge."
+    run_agent "$DIR" "$(cat "$FACTORY/lanes/review.md")"$'\n'"$HARD"       "Review $(pr_url "$PR") only. Use /thermo-nuclear-code-quality-review. Do not implement. Do not merge."
     ;;
   ci)
     need_pr
