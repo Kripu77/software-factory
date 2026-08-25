@@ -2,6 +2,7 @@
 
 Auth: Datadog API + app key, or the Datadog MCP if connected.
 
-Errors: Error Tracking. Logs: Log Explorer. Metrics: metrics query. Sessions: RUM. No product feature flags; use Experiments if you have them.
+Breakage: Error Tracking, Log Explorer, APM. Sessions: RUM.
+Product: RUM funnels and product analytics if those are on. Feature latency from APM. No product feature flags; use Experiments if you have them.
 
-If RUM is off, say so and bring APM + logs.
+If RUM product analytics is off, say so and bring APM + event counts. Do not invent a funnel.

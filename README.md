@@ -6,7 +6,7 @@ Build software this way: classify the work, cut tracer-bullet tickets, implement
 
 The runner is a plug. Grok, Claude Code, Codex, Cursor. Same `AGENTS.md`, same skills.
 
-Telemetry is a plug too. The Telemetry lane answers what broke, for whom, with what evidence. PostHog, Datadog, Azure App Insights, CloudWatch all speak the same contract. Swap the vendor. Keep the questions.
+Telemetry is a plug too. It is not an error inbox. It watches breakage and whether the product is actually working: funnels on any path, feature completion, time-to-value. Signup drop-off is one signal. So is onboarding, checkout, invite, the core loop, or a shipped feature nobody finishes. PostHog, Datadog, Azure App Insights, CloudWatch speak the same contract. Swap the vendor. Keep the questions.
 
 ![Software factory](docs/factory.svg)
 
@@ -17,7 +17,7 @@ Editable source: [`docs/factory.excalidraw`](docs/factory.excalidraw).
 | Lane | Job |
 | --- | --- |
 | CTO | Classify. Quiz. Ticket on the owning repo. Dispatch. Do not implement. |
-| Telemetry | Errors, logs, sessions, metrics, flags. Evidence only. Never implements. |
+| Telemetry | Breakage and product performance. Funnels, feature completion, errors, logs, sessions. Evidence only. Never implements. |
 | Bug | Reproduce from evidence, then TDD fix. |
 | Feature | Do not expand the ask. TDD, implement, deslop. |
 | Docs | Docs only. |
@@ -50,6 +50,7 @@ export FACTORY_RUNNER=grok                        # grok | claude | codex
 ./factory.sh review  --repo api --pr 40
 ./factory.sh ci      --repo api --pr 40
 ./factory.sh telemetry --question "login 500s last 24h"
+./factory.sh telemetry --question "where does onboarding die, last 7d"
 ```
 
 `--runner` overrides `FACTORY_RUNNER`. `--yes` auto-approves tool calls where the CLI allows it. `ship` runs implement, then review, then CI. Still does not merge.
@@ -65,4 +66,4 @@ export FACTORY_RUNNER=grok                        # grok | claude | codex
 
 ## Telemetry
 
-See [`telemetry/CONTRACT.md`](telemetry/CONTRACT.md). Session replay is optional. If the vendor cannot replay, say so and bring logs plus errors. Do not invent a session.
+See [`telemetry/CONTRACT.md`](telemetry/CONTRACT.md). Breakage and product performance. Funnels are any instrumented path, not one screen. Session replay is optional. If the vendor cannot replay or cannot funnel, say so. Do not invent either.

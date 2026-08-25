@@ -2,6 +2,7 @@
 
 Auth: PostHog MCP or project API key. EU vs US host matters.
 
-Answers all four questions. Session replay exists. Feature flags and experiments live here.
+Breakage: `$exception`, logs, session replay.
+Product: insights, funnels, paths, feature flags, experiments. Any event sequence you named, not only signup.
 
-Example: errors last 24h on `$exception`, then a replay for the person who hit it.
+Example: funnel on the onboarding events you actually send, step with the biggest drop, last 7d, plus a replay from that step.
