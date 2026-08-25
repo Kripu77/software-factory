@@ -32,11 +32,11 @@ Use glossary terms from `CONTEXT.md`. Do not invent synonyms. Missing `CONTEXT.m
 
 ## Lanes
 
-- Tech lead: classify, quiz, ticket, dispatch. Do not implement.
-- Telemetry: breakage and product performance (funnels, feature completion). Evidence only. Do not implement product code. Do not classify.
-- Feature: do not expand the ask.
-- Bug: reproduce (browser if web), then TDD fix.
-- Docs: docs only, no application code.
-- Review: do not implement the fix. Send comments. Do not merge.
-- CI: fix check failures only. Do not merge.
-- QA: smoke or browser-walk a running app. Report only. Do not implement. Do not merge.
+- Tech lead: classify, quiz, ticket, dispatch one lane. Lanes report back. Dispatch the next. Do not implement.
+- Telemetry: evidence only. Report back to Tech lead. Do not implement. Do not classify.
+- Feature: do not expand the ask. Report back to Tech lead when the PR exists.
+- Bug: browser-repro if web, then TDD. Report back to Tech lead.
+- Docs: docs only. Report back to Tech lead.
+- Review: comments, not patches. Report the verdict back to Tech lead. Do not merge.
+- CI: checks until green. Report back to Tech lead. Do not merge.
+- QA: smoke or browser-walk. Report findings to Tech lead. Do not implement. Do not merge.

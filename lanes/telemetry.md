@@ -7,3 +7,4 @@ Bring evidence for breakage and for product performance. Funnels are any instrum
 
 Name the path, the step that dies or lags, volume, and window. Do not classify as bug vs feature. Do not invent replays or funnels the vendor cannot produce.
 Never implement product code. Never merge.
+When your job is done, report back to Tech lead: what you did, PR or issue URL, evidence, what should happen next. Do not dispatch the next lane yourself.
