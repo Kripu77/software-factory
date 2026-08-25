@@ -1,16 +1,64 @@
 ---
 name: loop-on-ci
-description: Use when watching a dispatched PR until gh pr checks are green. Do not merge.
+description: Monitor PR checks and fix failures until green. Uses gh pr checks as the source of truth for PR-attached checks.
 ---
 
 # Loop on CI
 
-`gh pr checks` is the source of truth (not `gh run list`).
+## Trigger
 
-1. Resolve the PR.
-2. If failed, diagnose those failures first.
-3. If pending, `gh pr checks --watch --fail-fast`.
-4. Fix the failure on this branch. No `--no-verify`.
-5. Re-run `gh pr checks` after every push.
+Need to watch a branch or pull request and iterate on CI failures until all required checks are green.
 
-Never merge. If flake, retry once and report evidence. If it is clearly already fixed on main, merge main into the branch instead of bloating the PR.
+Use `gh pr checks` as the source of truth. It includes all PR-attached checks, while `gh run list` only covers GitHub Actions.
+
+## Workflow
+
+1. Resolve the PR for the current branch.
+
+2. Inspect current PR checks before waiting.
+
+3. If checks already failed, diagnose those failures first.
+
+4. If checks are pending, watch with `gh pr checks --watch --fail-fast`.
+
+5. After each push, re-check the full PR check set and repeat until green.
+
+## Commands
+
+```bash
+# Resolve the active PR
+gh pr view --json number,url,headRefName
+
+# Inspect all attached checks
+gh pr checks --json name,bucket,state,workflow,link
+
+# Watch pending checks and fail fast
+gh pr checks --watch --fail-fast
+
+# GitHub Actions logs, when the failing check links to a GHA run
+gh run view <run-id> --log-failed
+```
+
+## Guardrails
+
+- Keep each fix scoped to a single failure cause when possible.
+
+- Do not bypass hooks (`--no-verify`) to force progress.
+
+- If the failure is clearly unrelated to the PR and appears fixed on main, merge latest main instead of bloating the PR with unrelated fixes.
+
+- If failures are flaky, retry once and report flake evidence.
+
+- Re-run `gh pr checks --json name,bucket,state,workflow,link` after every push; the check set can change.
+
+## Output
+
+- Current CI status
+
+- Failure summary and fixes applied
+
+- PR URL once checks are green
+
+## Factory override
+
+Never merge. Never `gh pr merge`. Only the dispatched PR.
