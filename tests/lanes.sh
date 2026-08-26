@@ -56,6 +56,10 @@ playbook review review
 playbook ci ci
 playbook telemetry telemetry
 
+if grep -Eq "bug_mem_start|bug_mem_finish|bug_mem_write|bug_latest_status" "$ROOT/factory.sh"; then
+  fail "fold bug into run_mem_lane"
+fi
+
 WS="$TMP/workspace"
 mkdir -p "$WS/widgets"
 git -C "$WS/widgets" init -q
@@ -75,11 +79,15 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 : > "$dump/ran"
+own=()
+if [[ -z "${GROK_NO_OWNER:-}" ]]; then
+  own=(--owner acme --repo widgets)
+fi
 if [[ -n "${GROK_MEM_START:-}" ]]; then
-  "${FACTORY_SH:?}" mem write --lane "${GROK_LANE:?}" --status started --harness grok --issue "${GROK_ISSUE:-6}" --pr "${GROK_PR:-}" --project acme/widgets --owner acme --repo widgets >/dev/null
+  "${FACTORY_SH:?}" mem write --lane "${GROK_LANE:?}" --status started --harness grok ${GROK_ISSUE:+--issue "$GROK_ISSUE"} ${GROK_PR:+--pr "$GROK_PR"} --project acme/widgets "${own[@]}" >/dev/null
 fi
 if [[ -n "${GROK_MEM_STATUS:-}" ]]; then
-  "${FACTORY_SH:?}" mem write --lane "${GROK_LANE:?}" --status "$GROK_MEM_STATUS" --harness grok --issue "${GROK_ISSUE:-6}" --pr "${GROK_PR:-}" --project acme/widgets --owner acme --repo widgets --summary "${GROK_SUMMARY:-Lane finished}" --evidence "${GROK_EVIDENCE:-https://github.com/acme/widgets/issues/6}" --next-steps "${GROK_NEXT:-Tech lead dispatches the next lane}" >/dev/null
+  "${FACTORY_SH:?}" mem write --lane "${GROK_LANE:?}" --status "$GROK_MEM_STATUS" --harness grok ${GROK_ISSUE:+--issue "$GROK_ISSUE"} ${GROK_PR:+--pr "$GROK_PR"} --project acme/widgets "${own[@]}" --summary "${GROK_SUMMARY:-Lane finished}" --evidence "${GROK_EVIDENCE:-https://github.com/acme/widgets/issues/6}" --next-steps "${GROK_NEXT:-Tech lead dispatches the next lane}" >/dev/null
 fi
 exit "${GROK_EXIT:-0}"
 EOF
@@ -165,13 +173,29 @@ grep -q "status = done" "$DUMP/prompt" || fail "second feature should see first 
 # Agent started then blocked: one row, one comment, no extra done
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
-GROK_LANE=feature GROK_MEM_START=1 GROK_MEM_STATUS=blocked GROK_SUMMARY="Need a human" \
+GROK_LANE=feature GROK_ISSUE=6 GROK_MEM_START=1 GROK_MEM_STATUS=blocked GROK_SUMMARY="Need a human" \
   run_feature >"$TMP/bout" 2>"$TMP/berr"
 status="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT status FROM runs WHERE lane = 'feature' ORDER BY id DESC LIMIT 1;")"
 count="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT COUNT(*) FROM runs WHERE lane = 'feature';")"
 [[ "$status" == "blocked" ]] || fail "blocked should stick, got $status"
 [[ "$count" == "1" ]] || fail "started then blocked should be one row, count=$count"
 [[ "$(gh_count)" == "1" ]] || fail "blocked should comment once, got $(gh_count): $(cat "$DUMP/gh" 2>/dev/null || true)"
+
+# Agent done without --owner still comments once from finish
+rm -rf "$DUMP" "$TMP/memory"
+mkdir -p "$DUMP"
+GROK_LANE=feature GROK_ISSUE=6 GROK_MEM_STATUS=done GROK_NO_OWNER=1 GROK_SUMMARY="Shipped without owner flags" \
+  run_feature >"$TMP/nout" 2>"$TMP/nerr"
+[[ "$(gh_count)" == "1" ]] || fail "finish should comment when agent omitted owner, got $(gh_count): $(cat "$DUMP/gh" 2>/dev/null || true)"
+grep -q "issue comment 6" "$DUMP/gh" || fail "finish comment should be issue comment: $(cat "$DUMP/gh")"
+
+# factory.sh review writes memory and comments on the PR
+rm -rf "$DUMP" "$TMP/memory"
+mkdir -p "$DUMP"
+GROK_LANE=review GROK_PR=40 run_env "$FACTORY" review --repo widgets --pr 40 >"$TMP/rout" 2>"$TMP/rerr"
+rstatus="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT status FROM runs WHERE lane = 'review' ORDER BY id DESC LIMIT 1;")"
+[[ "$rstatus" == "done" ]] || fail "review finish should be done, got $rstatus"
+grep -q "pr comment 40" "$DUMP/gh" || fail "review finish should gh pr comment: $(cat "$DUMP/gh" 2>/dev/null || true)"
 
 # Comment failure does not fail the lane
 rm -rf "$DUMP" "$TMP/memory"

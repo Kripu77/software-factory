@@ -455,7 +455,9 @@ SELECT last_insert_rowid();"
   fi
   id="$(sqlite_tx "$db" "$sql")"
   echo "id=$id status=$STATUS"
-  ticket_comment
+  if [[ "${FACTORY_SKIP_TICKET_COMMENT:-}" != 1 ]]; then
+    ticket_comment
+  fi
 }
 
 MEM_WARNED=0
@@ -469,8 +471,8 @@ warn_mem() {
 }
 
 ticket_comment() {
-  local body err code url
-  case "${RUN_LANE:-}" in
+  local body err code url lane="${1:-${RUN_LANE:-$LANE}}"
+  case "$lane" in
     feature|docs|qa|review|ci|telemetry) ;;
     *) return 0 ;;
   esac
@@ -506,90 +508,6 @@ ticket_comment() {
     warn_mem "$(cat "$err")"
   fi
   rm -f "$err"
-}
-
-bug_mem_write() {
-  local status="$1" err code
-  shift
-  err="$(mktemp)"
-  set +e
-  "$FACTORY/factory.sh" mem write \
-    --lane bug \
-    --status "$status" \
-    --harness "$RUNNER" \
-    --issue "$ISSUE" \
-    ${OWNER:+--owner "$OWNER"} \
-    ${REPO:+--repo "$REPO"} \
-    "$@" \
-    >/dev/null 2>"$err"
-  code=$?
-  set -e
-  if [[ $code -ne 0 ]]; then
-    warn_mem "$(cat "$err")"
-  fi
-  rm -f "$err"
-}
-
-bug_mem_start() {
-  local err code
-  MEM_WARNED=0
-  MEM_CONTEXT=""
-  err="$(mktemp)"
-  set +e
-  MEM_CONTEXT="$("$FACTORY/factory.sh" mem read --issue "$ISSUE" 2>"$err")"
-  code=$?
-  set -e
-  if [[ $code -ne 0 || -s "$err" ]]; then
-    warn_mem "$(cat "$err")"
-  fi
-  rm -f "$err"
-}
-
-bug_latest_status() {
-  local rec_lane="" rec_st=""
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    case "$line" in
-      *"lane = "*) rec_lane="${line##* = }" ;;
-      *"status = "*) rec_st="${line##* = }" ;;
-      "")
-        if [[ "$rec_lane" == "bug" ]]; then
-          printf '%s\n' "$rec_st"
-          return 0
-        fi
-        rec_lane=""
-        rec_st=""
-        ;;
-    esac
-  done
-  if [[ "$rec_lane" == "bug" ]]; then
-    printf '%s\n' "$rec_st"
-  fi
-}
-
-bug_mem_finish() {
-  local code="$1" status latest err rec_status
-  err="$(mktemp)"
-  set +e
-  latest="$("$FACTORY/factory.sh" mem read --issue "$ISSUE" 2>"$err")"
-  set -e
-  if [[ -s "$err" ]]; then
-    warn_mem "$(cat "$err")"
-  fi
-  rm -f "$err"
-  rec_status="$(printf '%s\n' "$latest" | bug_latest_status)"
-  case "$rec_status" in
-    blocked|done|failed) return 0 ;;
-  esac
-  if [[ "$code" -eq 0 ]]; then
-    status=done
-  else
-    status=failed
-  fi
-  local extra=(--summary "Bug lane ${status}." --next-steps "Tech lead dispatches the next lane.")
-  if [[ -n "$OWNER" && -n "$REPO" && -n "$ISSUE" ]]; then
-    extra+=(--evidence "https://github.com/${OWNER}/${REPO}/issues/${ISSUE}")
-  fi
-  bug_mem_write "$status" "${extra[@]}"
 }
 
 mem_read_context() {
@@ -679,20 +597,27 @@ lane_mem_finish() {
   rm -f "$err"
   rec_status="$(printf '%s\n' "$latest" | latest_lane_status "$lane")"
   case "$rec_status" in
-    blocked|done|failed) return 0 ;;
+    blocked|done|failed) ;;
+    *)
+      if [[ "$code" -eq 0 ]]; then
+        status=done
+      else
+        status=failed
+      fi
+      extra=(--summary "${lane} lane ${status}." --next-steps "Tech lead dispatches the next lane.")
+      if [[ -n "$OWNER" && -n "$REPO" && -n "$ISSUE" ]]; then
+        extra+=(--evidence "https://github.com/${OWNER}/${REPO}/issues/${ISSUE}")
+      elif [[ -n "$OWNER" && -n "$REPO" && -n "$PR" ]]; then
+        extra+=(--evidence "https://github.com/${OWNER}/${REPO}/pull/${PR}")
+      fi
+      lane_mem_write "$lane" "$status" "${extra[@]}"
+      rec_status="$status"
+      SUMMARY="${lane} lane ${status}."
+      NEXT_STEPS="Tech lead dispatches the next lane."
+      ;;
   esac
-  if [[ "$code" -eq 0 ]]; then
-    status=done
-  else
-    status=failed
-  fi
-  extra=(--summary "${lane} lane ${status}." --next-steps "Tech lead dispatches the next lane.")
-  if [[ -n "$OWNER" && -n "$REPO" && -n "$ISSUE" ]]; then
-    extra+=(--evidence "https://github.com/${OWNER}/${REPO}/issues/${ISSUE}")
-  elif [[ -n "$OWNER" && -n "$REPO" && -n "$PR" ]]; then
-    extra+=(--evidence "https://github.com/${OWNER}/${REPO}/pull/${PR}")
-  fi
-  lane_mem_write "$lane" "$status" "${extra[@]}"
+  STATUS="$rec_status"
+  ticket_comment "$lane"
 }
 
 run_mem_lane() {
@@ -702,11 +627,13 @@ run_mem_lane() {
   if [[ -n "${MEM_CONTEXT:-}" ]]; then
     prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
   fi
+  export FACTORY_SKIP_TICKET_COMMENT=1
   set +e
   run_agent "$dir" "$rules" "$prompt"
   code=$?
   set -e
   lane_mem_finish "$lane" "$code"
+  unset FACTORY_SKIP_TICKET_COMMENT
   return "$code"
 }
 
@@ -718,27 +645,11 @@ case "$LANE" in
       *) usage ;;
     esac
     ;;
-  feature|docs)
+  feature|bug|docs)
     need_issue
     DIR="$(repo_dir)"
     run_mem_lane "$LANE" "$DIR" "$(cat "$FACTORY/lanes/${LANE}.md")"$'\n'"$HARD" "Implement GitHub issue $(issue_url "$ISSUE") in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."
     exit $?
-    ;;
-  bug)
-    need_issue
-    DIR="$(repo_dir)"
-    bug_mem_start
-    prompt="Implement GitHub issue $(issue_url "$ISSUE") in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."
-    prompt+=$'\n'"Memory writes: factory.sh mem write --lane bug --harness $RUNNER --issue $ISSUE --summary '<one sentence>' --evidence <url-or-path> --next-steps '<next>'."
-    if [[ -n "${MEM_CONTEXT:-}" ]]; then
-      prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
-    fi
-    set +e
-    run_agent "$DIR" "$(cat "$FACTORY/lanes/bug.md")"$'\n'"$HARD" "$prompt"
-    code=$?
-    set -e
-    bug_mem_finish "$code"
-    exit "$code"
     ;;
   review)
     need_pr
@@ -772,7 +683,7 @@ case "$LANE" in
     ;;
   lead|tech-lead|cto)
     need_issue
-    bug_mem_start
+    mem_read_context
     prompt="Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}."
     if [[ -n "${MEM_CONTEXT:-}" ]]; then
       prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
