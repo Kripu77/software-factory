@@ -35,7 +35,7 @@ Use glossary terms from `CONTEXT.md`. Do not invent synonyms. Missing `CONTEXT.m
 - Tech lead: classify, quiz, ticket, dispatch one lane. Lanes report back. Dispatch the next. Do not implement.
 - Telemetry: evidence only. Report back to Tech lead. Do not implement. Do not classify.
 - Feature: do not expand the ask. Report back to Tech lead when the PR exists.
-- Bug: browser-repro if web, then TDD. Report back to Tech lead.
+- Bug: browser-repro if web, then TDD. Read factory memory at start. Write started if none in progress, then done, blocked, or failed. Report back to Tech lead.
 - Docs: docs only. Report back to Tech lead.
 - Review: comments, not patches. Report the verdict back to Tech lead. Do not merge.
 - CI: checks until green. Report back to Tech lead. Do not merge.
