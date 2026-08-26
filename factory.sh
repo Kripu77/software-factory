@@ -113,9 +113,6 @@ else
       *) echo "Unknown arg: $1" >&2; usage ;;
     esac
   done
-  if [[ "$LANE" != "close-linked" ]]; then
-    detect_runner
-  fi
 fi
 
 infer_github() {
@@ -142,15 +139,11 @@ close_linked_issues() {
   need_owner
   need_repo
   command -v gh >/dev/null 2>&1 || { echo "gh not installed" >&2; exit 1; }
-  local info state base num
-  info="$(gh pr view "$PR" -R "${OWNER}/${REPO}" --json mergedAt,baseRefName,closingIssuesReferences --template '{{if .mergedAt}}merged{{else}}unmerged{{end}} {{.baseRefName}}{{"\n"}}{{range .closingIssuesReferences}}{{.number}}{{"\n"}}{{end}}')"
-  read -r state base <<<"${info%%$'\n'*}"
-  [[ "$state" == "merged" ]] || return 0
-  [[ "$base" == "main" ]] || return 0
+  local num
   while IFS= read -r num; do
     [[ "$num" =~ ^[0-9]+$ ]] || continue
     gh issue close "$num" -R "${OWNER}/${REPO}"
-  done <<< "${info#*$'\n'}"
+  done <<< "$(gh pr view "$PR" -R "${OWNER}/${REPO}" --json mergedAt,baseRefName,closingIssuesReferences --template '{{if .mergedAt}}{{if eq .baseRefName "main"}}{{range .closingIssuesReferences}}{{.number}}{{"\n"}}{{end}}{{end}}{{end}}')"
 }
 
 record_harness() {
@@ -179,6 +172,7 @@ run_agent() {
   local cwd="$1"
   local rules="$2"
   local prompt="$3"
+  detect_runner
   case "$RUNNER" in
     grok)
       local extra=(--no-auto-update --no-alt-screen)
@@ -696,6 +690,7 @@ lane_mem_finish() {
 
 run_mem_lane() {
   local lane="$1" dir="$2" rules="$3" prompt="$4" code
+  detect_runner
   mem_read_context
   prompt+=$'\n'"Memory writes: factory.sh mem write --lane $lane --harness $RUNNER ${ISSUE:+--issue $ISSUE }${PR:+--pr $PR }--summary '<one sentence>' --evidence <url-or-path> --next-steps '<next>'."
   if [[ -n "${MEM_CONTEXT:-}" ]]; then
@@ -866,6 +861,7 @@ floor_run() {
   need_issue
   [[ -n "$REPO" ]] || { echo "Need --repo <name>" >&2; exit 1; }
   need_owner
+  detect_runner
   for i in 1 2 3 4 5 6 7 8; do
     pr="$(floor_pr_from_mem)"
     [[ -n "$pr" ]] || pr="$(floor_pr_from_gh)"

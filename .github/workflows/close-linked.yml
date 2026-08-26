@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   close:
+    if: github.event.pull_request.merged && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

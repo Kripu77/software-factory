@@ -51,7 +51,7 @@ reset_dump() {
 }
 
 reset_dump
-printf '%s\n' 'merged main' '20' >"$DUMP/pr-view"
+printf '%s\n' '20' >"$DUMP/pr-view"
 run_close >"$TMP/out" 2>"$TMP/err"
 [[ -f "$DUMP/close" ]] || fail "merged linked PR should close: gh=$(cat "$DUMP/gh") err=$(cat "$TMP/err")"
 grep -q 'issue close 20' "$DUMP/close" || fail "merged linked PR should close issue 20: $(cat "$DUMP/close")"
@@ -59,23 +59,36 @@ grep -q closingIssuesReferences "$DUMP/gh" || fail "should ask GitHub which issu
 grep -q 'pr merge' "$DUMP/gh" && fail "close-linked must not merge: $(cat "$DUMP/gh")"
 
 reset_dump
-printf '%s\n' 'merged main' >"$DUMP/pr-view"
+: >"$DUMP/pr-view"
 run_close >"$TMP/out" 2>"$TMP/err"
-[[ ! -f "$DUMP/close" ]] || fail "mention-only must not close: $(cat "$DUMP/close")"
-grep -q 'pr view' "$DUMP/gh" || fail "mention-only should still view the PR: $(cat "$DUMP/gh")"
-grep -q 'pr merge' "$DUMP/gh" && fail "mention-only must not merge: $(cat "$DUMP/gh")"
+[[ ! -f "$DUMP/close" ]] || fail "empty links must not close: $(cat "$DUMP/close")"
+grep -q 'pr view' "$DUMP/gh" || fail "empty links should still view the PR: $(cat "$DUMP/gh")"
+grep -q 'pr merge' "$DUMP/gh" && fail "empty links must not merge: $(cat "$DUMP/gh")"
 
-reset_dump
-printf '%s\n' 'unmerged main' '20' >"$DUMP/pr-view"
-run_close >"$TMP/out" 2>"$TMP/err"
-[[ ! -f "$DUMP/close" ]] || fail "unmerged close must not close issues: $(cat "$DUMP/close")"
-grep -q 'pr merge' "$DUMP/gh" && fail "unmerged close must not merge: $(cat "$DUMP/gh")"
+close_fn="$(awk '/^close_linked_issues\(\)/{on=1} on{print} on && /^}$/{exit}' "$FACTORY")"
+echo "$close_fn" | grep -q 'mergedAt' || fail "template should emit numbers only when mergedAt is set"
+echo "$close_fn" | grep -q 'eq .baseRefName "main"' || fail "template should emit numbers only for base main"
+echo "$close_fn" | grep -q 'closingIssuesReferences' || fail "should close GitHub-linked issues, not mention-only"
+if echo "$close_fn" | grep -q 'unmerged'; then
+  fail "do not invent a merged/unmerged protocol"
+fi
 
-reset_dump
-printf '%s\n' 'merged develop' '20' >"$DUMP/pr-view"
-run_close >"$TMP/out" 2>"$TMP/err"
-[[ ! -f "$DUMP/close" ]] || fail "merge to develop must not close issues: $(cat "$DUMP/close")"
-grep -q 'pr merge' "$DUMP/gh" && fail "non-main merge must not merge: $(cat "$DUMP/gh")"
+fn_body() {
+  local name="$1"
+  awk -v n="$name" '
+    $0 ~ "^" n "\\(\\)" {on=1}
+    on {print}
+    on && /^}$/ {exit}
+  ' "$FACTORY"
+}
+
+parse="$(awk '/^if \[\[ "\$LANE" == "mem" \]\]/,/^infer_github/' "$FACTORY")"
+if echo "$parse" | grep -q detect_runner; then
+  fail "detect_runner belongs where a runner is used, not while parsing flags"
+fi
+fn_body run_agent | grep -q detect_runner || fail "run_agent should detect_runner"
+fn_body run_mem_lane | grep -q detect_runner || fail "run_mem_lane should detect_runner"
+fn_body floor_run | grep -q detect_runner || fail "floor_run should detect_runner"
 
 grep -q 'Do not `Closes` until every slice has landed' "$ROOT/AGENTS.md" || fail "AGENTS.md dropped the last-slice Closes rule"
 
@@ -83,6 +96,8 @@ wf="$ROOT/.github/workflows/close-linked.yml"
 [[ -f "$wf" ]] || fail "missing .github/workflows/close-linked.yml"
 grep -q "pull_request" "$wf" || fail "workflow should run on pull_request"
 grep -q "closed" "$wf" || fail "workflow should run when a PR is closed"
+grep -q "github.event.pull_request.merged" "$wf" || fail "job should run only when the PR merged"
+grep -q "github.event.pull_request.base.ref == 'main'" "$wf" || fail "job should run only for merge to main"
 if grep -q "pull_request_target" "$wf"; then
   fail "use pull_request, not pull_request_target"
 fi
