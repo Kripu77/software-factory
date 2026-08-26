@@ -77,6 +77,13 @@ grep -q "QA the PR" "$DUMP/prompt" || fail "lead prompt missing next_steps: $(ca
 after="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT COUNT(*) FROM runs;")"
 [[ "$before" == "$after" ]] || fail "lead must not write runs, before=$before after=$after"
 
+# Issue rows from another project still reach lead. mem read is issue, not issue AND project.
+rm -rf "$DUMP" "$TMP/memory"
+mkdir -p "$DUMP"
+"$FACTORY" mem write --harness grok --project other/repo --lane feature --status done --issue 7 --summary "Shipped on other remote" --evidence "https://github.com/other/repo/issues/7" >/dev/null
+run_lead >"$TMP/out3" 2>"$TMP/err3"
+grep -q "Shipped on other remote" "$DUMP/prompt" || fail "lead should see issue 7 from another project: $(cat "$DUMP/prompt")"
+
 # sqlite3 missing: warn once, lead still succeeds
 hid="$TMP/nosqlite"
 mkdir -p "$hid"

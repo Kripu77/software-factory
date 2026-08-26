@@ -497,25 +497,6 @@ bug_mem_start() {
   rm -f "$err"
 }
 
-lead_mem_read() {
-  local err code args=()
-  MEM_WARNED=0
-  MEM_CONTEXT=""
-  err="$(mktemp)"
-  args+=(--issue "$ISSUE")
-  if [[ -n "${OWNER:-}" && -n "${REPO:-}" ]]; then
-    args+=(--project "$OWNER/$REPO")
-  fi
-  set +e
-  MEM_CONTEXT="$("$FACTORY/factory.sh" mem read "${args[@]}" 2>"$err")"
-  code=$?
-  set -e
-  if [[ $code -ne 0 || -s "$err" ]]; then
-    warn_mem "$(cat "$err")"
-  fi
-  rm -f "$err"
-}
-
 bug_latest_status() {
   local rec_lane="" rec_st=""
   while IFS= read -r line || [[ -n "$line" ]]; do
@@ -621,7 +602,7 @@ case "$LANE" in
     ;;
   lead|tech-lead|cto)
     need_issue
-    lead_mem_read
+    bug_mem_start
     prompt="Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}."
     if [[ -n "${MEM_CONTEXT:-}" ]]; then
       prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
