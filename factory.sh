@@ -450,6 +450,35 @@ SELECT last_insert_rowid();"
   echo "id=$id status=$STATUS"
 }
 
+MEM_CONTEXT=""
+MEM_WARNED=0
+
+warn_mem() {
+  [[ "${MEM_WARNED}" -eq 0 ]] || return 0
+  MEM_WARNED=1
+  [[ -n "${1:-}" ]] || return 0
+  printf '%s\n' "$1" >&2
+}
+
+lead_mem_read() {
+  local err code args=()
+  MEM_WARNED=0
+  MEM_CONTEXT=""
+  err="$(mktemp)"
+  args+=(--issue "$ISSUE")
+  if [[ -n "${OWNER:-}" && -n "${REPO:-}" ]]; then
+    args+=(--project "$OWNER/$REPO")
+  fi
+  set +e
+  MEM_CONTEXT="$("$FACTORY/factory.sh" mem read "${args[@]}" 2>"$err")"
+  code=$?
+  set -e
+  if [[ $code -ne 0 || -s "$err" ]]; then
+    warn_mem "$(cat "$err")"
+  fi
+  rm -f "$err"
+}
+
 case "$LANE" in
   mem)
     case "$MEM_CMD" in
@@ -492,7 +521,12 @@ case "$LANE" in
     ;;
   lead|tech-lead|cto)
     need_issue
-    run_agent "$WORKSPACE" "$(cat "$FACTORY/lanes/tech-lead.md")"$'\n'"$HARD"       "Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}."
+    lead_mem_read
+    prompt="Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}."
+    if [[ -n "${MEM_CONTEXT:-}" ]]; then
+      prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
+    fi
+    run_agent "$WORKSPACE" "$(cat "$FACTORY/lanes/tech-lead.md")"$'\n'"$HARD" "$prompt"
     ;;
   telemetry)
     need_question
