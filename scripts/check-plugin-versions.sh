@@ -7,7 +7,7 @@ root="${2:-$(cd "$(dirname "$0")/.." && pwd)}"
 want="${tag#v}"
 
 plugin_version() {
-  awk -F'"' '/"version"/ { print $4; exit }' "$1"
+  python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$1"
 }
 
 for f in .claude-plugin/plugin.json .cursor-plugin/plugin.json .grok-plugin/plugin.json; do

@@ -10,34 +10,49 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 check="$ROOT/scripts/check-plugin-versions.sh"
 [[ -x "$check" ]] || fail "missing executable scripts/check-plugin-versions.sh"
 
-"$check" v1.0.0 || fail "v1.0.0 should match plugin versions in this checkout"
+write_plugin() {
+  local dest="$1" version="$2" extra="${3:-}"
+  mkdir -p "$(dirname "$dest")"
+  if [[ -n "$extra" ]]; then
+    printf '{"name":"fixture","description":"%s","version":"%s"}\n' "$extra" "$version" >"$dest"
+  else
+    printf '{"name":"fixture","version":"%s"}\n' "$version" >"$dest"
+  fi
+}
+
+pack_plugins() {
+  local dest="$1" version="$2"
+  mkdir -p "$dest/.claude-plugin" "$dest/.cursor-plugin" "$dest/.grok-plugin"
+  write_plugin "$dest/.claude-plugin/plugin.json" "$version"
+  write_plugin "$dest/.cursor-plugin/plugin.json" "$version"
+  write_plugin "$dest/.grok-plugin/plugin.json" "$version"
+}
 
 fx="$TMP/pack"
-mkdir -p "$fx/.claude-plugin" "$fx/.cursor-plugin" "$fx/.grok-plugin"
-for f in .claude-plugin/plugin.json .cursor-plugin/plugin.json .grok-plugin/plugin.json; do
-  cp "$ROOT/$f" "$fx/$f"
-done
-"$check" v1.0.0 "$fx" || fail "fixture at 1.0.0 should pass v1.0.0"
+pack_plugins "$fx" "3.2.1"
+"$check" v3.2.1 "$fx" || fail "compact fixture at 3.2.1 should pass v3.2.1"
+
+write_plugin "$fx/.claude-plugin/plugin.json" "3.2.1" "mentions version in another key"
+"$check" v3.2.1 "$fx" || fail "version key should win when another field mentions version"
 
 set +e
-"$check" v2.0.0 "$fx" >"$TMP/out" 2>"$TMP/err"
+"$check" v9.9.9 "$fx" >"$TMP/out" 2>"$TMP/err"
 code=$?
 set -e
-[[ $code -ne 0 ]] || fail "v2.0.0 should fail when plugins are 1.0.0"
-grep -q "1.0.0" "$TMP/err" || fail "mismatch should name the plugin version: $(cat "$TMP/err")"
+[[ $code -ne 0 ]] || fail "v9.9.9 should fail when plugins are 3.2.1"
+grep -q "3.2.1" "$TMP/err" || fail "mismatch should name the plugin version: $(cat "$TMP/err")"
 
-sed 's/"1.0.0"/"1.0.1"/' "$fx/.cursor-plugin/plugin.json" >"$TMP/cursor.json"
-mv "$TMP/cursor.json" "$fx/.cursor-plugin/plugin.json"
+write_plugin "$fx/.cursor-plugin/plugin.json" "3.2.2"
 set +e
-"$check" v1.0.0 "$fx" >"$TMP/out" 2>"$TMP/err"
+"$check" v3.2.1 "$fx" >"$TMP/out" 2>"$TMP/err"
 code=$?
 set -e
 [[ $code -ne 0 ]] || fail "one plugin off the tag should fail"
-cp "$ROOT/.cursor-plugin/plugin.json" "$fx/.cursor-plugin/plugin.json"
+write_plugin "$fx/.cursor-plugin/plugin.json" "3.2.1"
 
 rm "$fx/.grok-plugin/plugin.json"
 set +e
-"$check" v1.0.0 "$fx" >"$TMP/out" 2>"$TMP/err"
+"$check" v3.2.1 "$fx" >"$TMP/out" 2>"$TMP/err"
 code=$?
 set -e
 [[ $code -ne 0 ]] || fail "missing plugin.json should fail"
