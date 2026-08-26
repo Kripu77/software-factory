@@ -27,7 +27,8 @@ Use glossary terms from `CONTEXT.md`. Do not invent synonyms. Missing `CONTEXT.m
 - PR title: `Type/<issue.number>/<short description>` where Type is Feat, Bug, Arch, Chore, Refactor, or General.
 - PR description: human, at most 3 sentences. Reference the ticket. Do not `Closes` until every slice has landed.
 - Never merge. Never `gh pr merge`. Never `--no-verify`.
-- Never read `.env` or `.env.local`.
+- Never read `.env` or `.env.local`. Never store `.env` contents in factory memory.
+- Never attribute factory code to other products.
 - Only the ticket or PR you were given. No sweeping other people's PRs.
 
 ## Lanes

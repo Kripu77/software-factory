@@ -3,4 +3,4 @@ description: Software factory house rules. Use when running a factory lane or /f
 alwaysApply: false
 ---
 
-Follow AGENTS.md in this plugin. Never merge. Never git commit --no-verify. Never read .env or .env.local. Only the ticket or PR you were given. Issues live on the owning service. PR title Type/<issue.number>/<short description>.
+Follow AGENTS.md in this plugin. Never merge. Never git commit --no-verify. Never read .env or .env.local. Never store .env contents in factory memory. Never attribute factory code to other products. Factory memory is this machine's sqlite db under ~/.factory/memory. Only the ticket or PR you were given. Issues live on the owning service. PR title Type/<issue.number>/<short description>.

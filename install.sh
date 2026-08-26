@@ -18,6 +18,9 @@ link_skills() {
 
 echo "Factory: $FACTORY"
 
+mkdir -p "${HOME}/.factory/memory"
+echo "memory ${HOME}/.factory/memory"
+
 # Grok Build plugin (skills + commands). Copies into ~/.grok/installed-plugins.
 if command -v grok >/dev/null 2>&1; then
   if grok plugin list 2>/dev/null | grep -q "software-factory"; then

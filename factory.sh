@@ -21,7 +21,7 @@ Usage:
 
 Never merges. A person merges.
 FACTORY_WORKSPACE, FACTORY_OWNER, FACTORY_RUNNER can be set instead of flags.
-Memory: FACTORY_MEMORY_DB (default ~/.factory/memory/factory.db).
+Memory: FACTORY_MEMORY_DB (default ~/.factory/memory/factory.db). Optional. Missing db warns and continues.
 EOF
   exit 1
 }
