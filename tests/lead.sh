@@ -45,10 +45,16 @@ run_lead() {
 need_text lanes/tech-lead.md "mem read"
 need_text lanes/tech-lead.md "hint"
 need_text lanes/tech-lead.md "Do not implement"
-need_text lanes/tech-lead.md "Dispatch"
+need_text lanes/tech-lead.md "factory.sh"
+need_text lanes/tech-lead.md "floor"
+need_text lanes/tech-lead.md "failed run"
 need_text lanes/tech-lead.md "Do not let a lane chain"
 need_text commands/lead.md "mem read"
 need_text commands/lead.md "Do not implement"
+need_text commands/lead.md "factory.sh"
+need_text commands/lead.md "floor"
+need_text commands/lead.md "failed run"
+need_text commands/lead.md "Cursor"
 
 # Missing DB: warn once, lead still runs, no write
 rm -rf "$DUMP" "$TMP/memory"
@@ -74,6 +80,8 @@ grep -q "acme/widgets" "$DUMP/prompt" || fail "lead prompt missing project: $(ca
 grep -q "status = done" "$DUMP/prompt" || fail "lead prompt missing status: $(cat "$DUMP/prompt")"
 grep -q "Add widgets list" "$DUMP/prompt" || fail "lead prompt missing summary: $(cat "$DUMP/prompt")"
 grep -q "QA the PR" "$DUMP/prompt" || fail "lead prompt missing next_steps: $(cat "$DUMP/prompt")"
+grep -q "factory.sh floor" "$DUMP/prompt" || fail "lead prompt must start floor via factory.sh: $(cat "$DUMP/prompt")"
+grep -q "failed run" "$DUMP/prompt" || fail "lead prompt must call implementing a failed run: $(cat "$DUMP/prompt")"
 after="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT COUNT(*) FROM runs;")"
 [[ "$before" == "$after" ]] || fail "lead must not write runs, before=$before after=$after"
 

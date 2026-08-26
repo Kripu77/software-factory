@@ -894,7 +894,7 @@ case "$LANE" in
   lead|tech-lead|cto)
     need_issue
     mem_read_context
-    prompt="Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}."
+    prompt="Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}. After tickets exist, start factory.sh floor --repo ${REPO:-<repo>} --issue ${ISSUE} (or one factory.sh lane). Dispatch is factory.sh only. Writing product code, leaving a review, or watching CI in this session is a failed run."
     if [[ -n "${MEM_CONTEXT:-}" ]]; then
       prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
     fi
