@@ -32,7 +32,7 @@ Use glossary terms from `CONTEXT.md`. Do not invent synonyms. Missing `CONTEXT.m
 
 ## Lanes
 
-- Tech lead: classify, quiz, ticket, dispatch one lane. Lanes report back. Dispatch the next. Do not implement.
+- Tech lead: classify, quiz, ticket, dispatch via factory.sh (usually floor). Lanes report back. Do not implement. Implementing in the lead session is a failed run.
 - Telemetry: evidence only. Report back to Tech lead. Do not implement. Do not classify.
 - Feature: do not expand the ask. Report back to Tech lead when the PR exists.
 - Bug: browser-repro if web, then TDD. Read factory memory at start. Write started if none in progress, then done, blocked, or failed. Report back to Tech lead.

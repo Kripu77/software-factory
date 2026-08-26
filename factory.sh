@@ -123,17 +123,17 @@ run_agent() {
     grok)
       local extra=(--no-auto-update --no-alt-screen)
       [[ "$YES" -eq 1 ]] && extra+=(--always-approve)
-      ( cd "$cwd" && grok "${extra[@]}" --rules "$rules" -p "$prompt" )
+      ( cd "$cwd" && FACTORY_LANE="$LANE" grok "${extra[@]}" --rules "$rules" -p "$prompt" )
       ;;
     claude)
       local extra=(-p --append-system-prompt "$rules")
       [[ "$YES" -eq 1 ]] && extra+=(--dangerously-skip-permissions)
-      ( cd "$cwd" && claude "${extra[@]}" "$prompt" )
+      ( cd "$cwd" && FACTORY_LANE="$LANE" claude "${extra[@]}" "$prompt" )
       ;;
     codex)
       local extra=(exec)
       [[ "$YES" -eq 1 ]] && extra+=(--full-auto)
-      ( cd "$cwd" && codex "${extra[@]}" "$prompt"$'\n\n'"$rules" )
+      ( cd "$cwd" && FACTORY_LANE="$LANE" codex "${extra[@]}" "$prompt"$'\n\n'"$rules" )
       ;;
     *)
       echo "Unknown runner: $RUNNER (grok|claude|codex)" >&2
@@ -680,6 +680,7 @@ floor_pr_from_mem() {
         ;;
     esac
   done <<< "$(floor_mem)"
+  return 0
 }
 
 floor_pr_from_gh() {
@@ -693,6 +694,7 @@ floor_pr_from_gh() {
     num="$(gh pr view -R "${OWNER}/${REPO}" --json number --template '{{.number}}' 2>/dev/null || true)"
   fi
   [[ -n "$num" ]] && printf '%s\n' "$num"
+  return 0
 }
 
 floor_review_count() {
@@ -804,6 +806,9 @@ floor_run() {
   [[ -n "$REPO" ]] || { echo "Need --repo <name>" >&2; exit 1; }
   need_owner
   for i in 1 2 3 4 5 6 7 8; do
+    pr="$(floor_pr_from_mem)"
+    [[ -n "$pr" ]] || pr="$(floor_pr_from_gh)"
+    [[ -n "$pr" ]] && PR="$pr"
     next="$(floor_next)"
     case "$next" in
       stop:blocked)
@@ -894,11 +899,16 @@ case "$LANE" in
   lead|tech-lead|cto)
     need_issue
     mem_read_context
-    prompt="Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}."
+    prompt="Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}. After tickets exist, start factory.sh floor --repo ${REPO:-<repo>} --issue ${ISSUE} (or one factory.sh lane). Dispatch is factory.sh only. Writing product code, leaving a review, or watching CI in this session is a failed run."
     if [[ -n "${MEM_CONTEXT:-}" ]]; then
       prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
     fi
     run_agent "$WORKSPACE" "$(cat "$FACTORY/lanes/tech-lead.md")"$'\n'"$HARD" "$prompt"
+    if [[ -n "${REPO:-}" && -n "${OWNER:-}" ]]; then
+      echo "dispatch factory.sh floor"
+      floor_cmd floor --repo "$REPO" --issue "$ISSUE" --owner "$OWNER" --runner "$RUNNER"
+      exit $?
+    fi
     ;;
   telemetry)
     need_question
