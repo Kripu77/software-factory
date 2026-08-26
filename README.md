@@ -54,13 +54,22 @@ cd software-factory
 ./install.sh
 ```
 
-That creates `~/.factory/memory`, installs the plugin, and puts `factory` on `~/.local/bin`. Codex: `./install.sh /path/to/your-checkout` also writes `AGENTS.md` there. Then:
+Clone plus `./install.sh` is the from-source path. That creates `~/.factory/memory`, installs the plugin, and puts `factory` on `~/.local/bin`. Codex: `./install.sh /path/to/your-checkout` also writes `AGENTS.md` there. Then:
 
 ```bash
 cd /path/to/your-checkout
 grok          # or claude
 /lead
 ```
+
+The versioned pack is on GitHub Releases. Set plugin versions in `.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, and `.grok-plugin/plugin.json` to the tag without the `v`, then:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+A person creates the tag. A push to main does not cut a Release.
 
 Owner and repo come from `git remote`. Workspace is this directory. Put `~/.local/bin` on PATH if `factory` is missing. Two of claude, codex, grok on PATH: set `FACTORY_RUNNER`.
 
