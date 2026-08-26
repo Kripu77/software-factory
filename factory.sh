@@ -16,9 +16,12 @@ Usage:
   factory.sh telemetry        --question "<what broke>" [--yes]
   factory.sh qa               --repo <name> --pr <n> [--url <app>]
   factory.sh qa               --url <app>
+  factory.sh mem read         [--issue <n>] [--project owner/name] [--limit n]
+  factory.sh mem write        --lane <lane> --status started|done|blocked|failed [--harness grok|claude|codex|cursor] [--issue <n>] [--pr <n>] [--project owner/name] [--summary s] [--next-steps s] [--evidence url-or-json]
 
 Never merges. A person merges.
 FACTORY_WORKSPACE, FACTORY_OWNER, FACTORY_RUNNER can be set instead of flags.
+Memory: FACTORY_MEMORY_DB (default ~/.factory/memory/factory.db).
 EOF
   exit 1
 }
@@ -37,12 +40,28 @@ detect_runner() {
 LANE="${1:-}"
 [[ -n "$LANE" ]] || usage
 shift || usage
+MEM_CMD=""
+if [[ "$LANE" == "mem" ]]; then
+  MEM_CMD="${1:-}"
+  case "$MEM_CMD" in
+    read|write) shift ;;
+    *) usage ;;
+  esac
+fi
 REPO=""
 ISSUE=""
 PR=""
 URL=""
 QUESTION=""
 YES=0
+HARNESS=""
+RUN_LANE=""
+PROJECT=""
+STATUS=""
+SUMMARY=""
+NEXT_STEPS=""
+EVIDENCE=""
+LIMIT=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -52,6 +71,14 @@ while [[ $# -gt 0 ]]; do
     --url) URL="${2:-}"; shift 2 ;;
     --owner) OWNER="${2:-}"; shift 2 ;;
     --runner) RUNNER="${2:-}"; shift 2 ;;
+    --harness) HARNESS="${2:-}"; shift 2 ;;
+    --lane) RUN_LANE="${2:-}"; shift 2 ;;
+    --project) PROJECT="${2:-}"; shift 2 ;;
+    --status) STATUS="${2:-}"; shift 2 ;;
+    --summary) SUMMARY="${2:-}"; shift 2 ;;
+    --next-steps) NEXT_STEPS="${2:-}"; shift 2 ;;
+    --evidence) EVIDENCE="${2:-}"; shift 2 ;;
+    --limit) LIMIT="${2:-}"; shift 2 ;;
     --question) QUESTION="${2:-}"; shift 2 ;;
     --yes) YES=1; shift ;;
     -h|--help) usage ;;
@@ -59,7 +86,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-detect_runner
+if [[ "$LANE" != "mem" ]]; then
+  detect_runner
+fi
 
 need_owner() { [[ -n "$OWNER" ]] || { echo "Need --owner or FACTORY_OWNER" >&2; exit 1; }; }
 need_issue() { [[ -n "$ISSUE" ]] || { echo "Need --issue <n>" >&2; exit 1; }; }
@@ -124,7 +153,174 @@ pr_url() {
   printf 'https://github.com/%s/%s/pull/%s\n' "$OWNER" "$REPO" "$1"
 }
 
+sql_quote() {
+  local s="$1"
+  s=${s//"'"/"''"}
+  printf "'%s'" "$s"
+}
+
+sql_nullable() {
+  if [[ -z "${1:-}" ]]; then
+    printf 'NULL'
+  else
+    sql_quote "$1"
+  fi
+}
+
+json_quote() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  printf '"%s"' "$s"
+}
+
+memory_db() {
+  printf '%s\n' "${FACTORY_MEMORY_DB:-$HOME/.factory/memory/factory.db}"
+}
+
+need_sqlite() {
+  command -v sqlite3 >/dev/null 2>&1 || { echo "sqlite3 not installed" >&2; exit 1; }
+}
+
+memory_init() {
+  local db
+  db="$(memory_db)"
+  mkdir -p "$(dirname "$db")"
+  need_sqlite
+  sqlite3 "$db" "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;" >/dev/null
+  sqlite3 "$db" <<'SQL'
+CREATE TABLE IF NOT EXISTS schema_versions (
+  id INTEGER PRIMARY KEY,
+  version INTEGER UNIQUE NOT NULL,
+  applied_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  harness TEXT NOT NULL CHECK(harness IN ('claude', 'cursor', 'codex', 'grok')),
+  lane TEXT NOT NULL,
+  project TEXT NOT NULL,
+  issue TEXT,
+  pr TEXT,
+  status TEXT NOT NULL CHECK(status IN ('started', 'done', 'blocked', 'failed')),
+  summary TEXT,
+  next_steps TEXT,
+  evidence TEXT NOT NULL DEFAULT '[]',
+  started_at TEXT NOT NULL,
+  started_at_epoch INTEGER NOT NULL,
+  completed_at TEXT,
+  completed_at_epoch INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_runs_project_time ON runs(project, started_at_epoch DESC);
+CREATE INDEX IF NOT EXISTS idx_runs_issue_time ON runs(issue, started_at_epoch DESC);
+CREATE INDEX IF NOT EXISTS idx_runs_status ON runs(status);
+INSERT OR IGNORE INTO schema_versions (version, applied_at)
+VALUES (1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'));
+SQL
+}
+
+detect_project() {
+  if [[ -n "${PROJECT:-}" ]]; then
+    return
+  fi
+  if [[ -n "$OWNER" && -n "$REPO" ]]; then
+    PROJECT="$OWNER/$REPO"
+    return
+  fi
+  local url=""
+  url="$(git -C "$WORKSPACE" remote get-url origin 2>/dev/null || true)"
+  if [[ -z "$url" ]]; then
+    url="$(git remote get-url origin 2>/dev/null || true)"
+  fi
+  [[ -n "$url" ]] || { echo "Need --project owner/name" >&2; exit 1; }
+  PROJECT="$(printf '%s' "$url" | sed -E -e 's#^[a-zA-Z0-9+.-]+://##' -e 's#^git@##' -e 's#^[^:/]+[:/]##' -e 's#\.git$##')"
+}
+
+normalize_evidence() {
+  if [[ -z "${EVIDENCE:-}" ]]; then
+    EVIDENCE='[]'
+    return
+  fi
+  if [[ "$EVIDENCE" == \[* ]]; then
+    return
+  fi
+  EVIDENCE="[$(json_quote "$EVIDENCE")]"
+}
+
+mem_read() {
+  local db where sql
+  db="$(memory_db)"
+  if [[ ! -f "$db" ]]; then
+    echo "No factory memory yet at $db" >&2
+    exit 0
+  fi
+  need_sqlite
+  LIMIT="${LIMIT:-10}"
+  [[ "$LIMIT" =~ ^[0-9]+$ ]] || { echo "Need --limit <n>" >&2; exit 1; }
+  where=""
+  if [[ -n "$ISSUE" ]]; then
+    where="issue = $(sql_quote "$ISSUE")"
+  fi
+  if [[ -n "$PROJECT" ]]; then
+    if [[ -n "$where" ]]; then
+      where="$where AND project = $(sql_quote "$PROJECT")"
+    else
+      where="project = $(sql_quote "$PROJECT")"
+    fi
+  fi
+  sql="SELECT id, harness, lane, project, issue, pr, status, summary, next_steps, evidence, started_at, completed_at FROM runs"
+  if [[ -n "$where" ]]; then
+    sql="$sql WHERE $where"
+  fi
+  sql="$sql ORDER BY started_at_epoch DESC, id DESC LIMIT $LIMIT"
+  sqlite3 -line "$db" "$sql"
+}
+
+mem_write() {
+  local db now epoch open_id id completed_at completed_epoch
+  [[ -n "${RUN_LANE:-}" ]] || { echo "Need --lane <lane>" >&2; exit 1; }
+  case "${STATUS:-}" in
+    started|done|blocked|failed) ;;
+    *) echo "Need --status started|done|blocked|failed" >&2; exit 1 ;;
+  esac
+  HARNESS="${HARNESS:-$RUNNER}"
+  case "$HARNESS" in
+    claude|cursor|codex|grok) ;;
+    *) echo "Need --harness claude|cursor|codex|grok" >&2; exit 1 ;;
+  esac
+  detect_project
+  normalize_evidence
+  memory_init
+  db="$(memory_db)"
+  now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  epoch="$(date +%s)"
+  open_id=""
+  if [[ "$STATUS" != "started" && -n "$ISSUE" ]]; then
+    open_id="$(sqlite3 "$db" "SELECT id FROM runs WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE") AND status = 'started' ORDER BY started_at_epoch DESC, id DESC LIMIT 1")"
+  fi
+  if [[ -n "$open_id" ]]; then
+    sqlite3 "$db" "UPDATE runs SET status = $(sql_quote "$STATUS"), summary = COALESCE($(sql_nullable "$SUMMARY"), summary), next_steps = COALESCE($(sql_nullable "$NEXT_STEPS"), next_steps), evidence = CASE WHEN $(sql_quote "$EVIDENCE") = '[]' THEN evidence ELSE $(sql_quote "$EVIDENCE") END, pr = COALESCE($(sql_nullable "$PR"), pr), completed_at = $(sql_quote "$now"), completed_at_epoch = $epoch WHERE id = $open_id"
+    echo "id=$open_id status=$STATUS"
+    return
+  fi
+  if [[ "$STATUS" == "started" ]]; then
+    completed_at="NULL"
+    completed_epoch="NULL"
+  else
+    completed_at="$(sql_quote "$now")"
+    completed_epoch="$epoch"
+  fi
+  id="$(sqlite3 "$db" "INSERT INTO runs (harness, lane, project, issue, pr, status, summary, next_steps, evidence, started_at, started_at_epoch, completed_at, completed_at_epoch) VALUES ($(sql_quote "$HARNESS"), $(sql_quote "$RUN_LANE"), $(sql_quote "$PROJECT"), $(sql_nullable "$ISSUE"), $(sql_nullable "$PR"), $(sql_quote "$STATUS"), $(sql_nullable "$SUMMARY"), $(sql_nullable "$NEXT_STEPS"), $(sql_quote "$EVIDENCE"), $(sql_quote "$now"), $epoch, $completed_at, $completed_epoch); SELECT last_insert_rowid();")"
+  echo "id=$id status=$STATUS"
+}
+
 case "$LANE" in
+  mem)
+    case "$MEM_CMD" in
+      read) mem_read ;;
+      write) mem_write ;;
+      *) usage ;;
+    esac
+    ;;
   feature|bug|docs)
     need_issue
     DIR="$(repo_dir)"
