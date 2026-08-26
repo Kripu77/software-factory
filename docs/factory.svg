@@ -90,7 +90,7 @@
 <text class="muted" x="140" y="360" text-anchor="middle" font-size="12">report</text>
 <rect x="790" y="390" width="250" height="220" rx="16" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
 <text x="915" y="440" text-anchor="middle" font-size="22" font-weight="600">Memory</text>
-<text class="muted" x="915" y="468" text-anchor="middle" font-size="14">this laptop</text>
+<text class="muted" x="915" y="468" text-anchor="middle" font-size="14">your device</text>
 <text class="muted" x="915" y="488" text-anchor="middle" font-size="14">factory.db</text>
 <text x="915" y="530" text-anchor="middle" font-size="14" font-weight="600">GitHub comments</text>
 <text class="muted" x="915" y="552" text-anchor="middle" font-size="13">public ledger</text>
