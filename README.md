@@ -69,7 +69,7 @@ Codex:
 
 ```
 codex plugin marketplace add Kripu77/software-factory@v1.0.0
-codex plugin install software-factory@software-factory
+codex plugin add software-factory@software-factory
 ```
 
 Cursor:

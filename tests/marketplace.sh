@@ -19,16 +19,13 @@ plugin_version() {
   python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$1"
 }
 
-assert_marketplace() {
-  local file="$1"
-  need_file "$file"
-  python3 - "$ROOT/$file" <<'PY' || fail "$file is not a valid software-factory marketplace"
+assert_claude_marketplace() {
+  need_file ".claude-plugin/marketplace.json"
+  python3 - "$ROOT/.claude-plugin/marketplace.json" <<'PY' || fail ".claude-plugin/marketplace.json is not a Claude marketplace"
 import json, sys
 
 path = sys.argv[1]
-with open(path) as f:
-    data = json.load(f)
-
+data = json.load(open(path))
 if not isinstance(data, dict):
     raise SystemExit(f"{path} must be a JSON object")
 if data.get("name") != "software-factory":
@@ -39,39 +36,110 @@ if not owner.get("name"):
 plugins = data.get("plugins")
 if not isinstance(plugins, list) or not plugins:
     raise SystemExit(f"{path} needs a plugins list")
-
-def is_local_root(source):
-    if source in ("./", "."):
-        return True
-    if isinstance(source, dict):
-        path_val = source.get("path")
-        if path_val in ("./", "."):
-            return True
-        if source.get("type") == "local" and path_val in ("./", ".", None):
-            return True
-    return False
-
-found = None
-for plugin in plugins:
-    if plugin.get("name") == "software-factory":
-        found = plugin
-        break
+found = next((p for p in plugins if p.get("name") == "software-factory"), None)
 if found is None:
     raise SystemExit(f"{path} must list plugin software-factory")
-if not is_local_root(found.get("source")):
-    raise SystemExit(f"{path} software-factory source must be this repo, not a remote main")
-version = found.get("version")
-if version is not None and not version:
-    raise SystemExit(f"{path} plugin version is empty")
+if found.get("source") != "./":
+    raise SystemExit(f"{path} software-factory source must be the relative path ./")
+if "version" in found:
+    raise SystemExit(f"{path} must not set plugin version; .claude-plugin/plugin.json is canonical")
+PY
+}
+
+assert_grok_marketplace() {
+  need_file ".grok-plugin/marketplace.json"
+  python3 - "$ROOT/.grok-plugin/marketplace.json" <<'PY' || fail ".grok-plugin/marketplace.json is not a Grok marketplace"
+import json, sys
+
+path = sys.argv[1]
+data = json.load(open(path))
+if not isinstance(data, dict):
+    raise SystemExit(f"{path} must be a JSON object")
+if data.get("name") != "software-factory":
+    raise SystemExit(f"{path} name must be software-factory")
+owner = data.get("owner") or {}
+if not owner.get("name"):
+    raise SystemExit(f"{path} needs owner.name")
+plugins = data.get("plugins")
+if not isinstance(plugins, list) or not plugins:
+    raise SystemExit(f"{path} needs a plugins list")
+found = next((p for p in plugins if p.get("name") == "software-factory"), None)
+if found is None:
+    raise SystemExit(f"{path} must list plugin software-factory")
+source = found.get("source")
+if not (isinstance(source, dict) and source.get("type") == "local" and source.get("path") == "./"):
+    raise SystemExit(f"{path} software-factory source must be {{type: local, path: ./}}")
+if "version" in found:
+    raise SystemExit(f"{path} must not set plugin version; .grok-plugin/plugin.json is canonical")
+PY
+}
+
+assert_cursor_marketplace() {
+  need_file ".cursor-plugin/marketplace.json"
+  python3 - "$ROOT/.cursor-plugin/marketplace.json" <<'PY' || fail ".cursor-plugin/marketplace.json is not a Cursor marketplace"
+import json, sys
+
+path = sys.argv[1]
+data = json.load(open(path))
+if not isinstance(data, dict):
+    raise SystemExit(f"{path} must be a JSON object")
+if data.get("name") != "software-factory":
+    raise SystemExit(f"{path} name must be software-factory")
+owner = data.get("owner") or {}
+if not owner.get("name"):
+    raise SystemExit(f"{path} needs owner.name")
+plugins = data.get("plugins")
+if not isinstance(plugins, list) or not plugins:
+    raise SystemExit(f"{path} needs a plugins list")
+found = next((p for p in plugins if p.get("name") == "software-factory"), None)
+if found is None:
+    raise SystemExit(f"{path} must list plugin software-factory")
+allowed = {"name", "source", "description", "minClientVersions"}
+extra = set(found) - allowed
+if extra:
+    raise SystemExit(f"{path} plugin entries may only have {sorted(allowed)}; extra {sorted(extra)}")
+if found.get("source") != "./":
+    raise SystemExit(f"{path} software-factory source must be ./")
+PY
+}
+
+assert_codex_marketplace() {
+  need_file ".agents/plugins/marketplace.json"
+  python3 - "$ROOT/.agents/plugins/marketplace.json" <<'PY' || fail ".agents/plugins/marketplace.json is not a Codex marketplace"
+import json, sys
+
+path = sys.argv[1]
+data = json.load(open(path))
+if not isinstance(data, dict):
+    raise SystemExit(f"{path} must be a JSON object")
+if data.get("name") != "software-factory":
+    raise SystemExit(f"{path} name must be software-factory")
+owner = data.get("owner") or {}
+if not owner.get("name"):
+    raise SystemExit(f"{path} needs owner.name")
+plugins = data.get("plugins")
+if not isinstance(plugins, list) or not plugins:
+    raise SystemExit(f"{path} needs a plugins list")
+found = next((p for p in plugins if p.get("name") == "software-factory"), None)
+if found is None:
+    raise SystemExit(f"{path} must list plugin software-factory")
+source = found.get("source")
+if not (isinstance(source, dict) and source.get("source") == "local" and source.get("path") == "./"):
+    raise SystemExit(f"{path} software-factory source must be {{source: local, path: ./}}")
+if "version" in found:
+    raise SystemExit(f"{path} must not set plugin version; .codex-plugin/plugin.json is canonical")
+policy = found.get("policy") or {}
+if not policy.get("installation") or not policy.get("authentication"):
+    raise SystemExit(f"{path} software-factory needs policy.installation and policy.authentication")
 PY
 }
 
 want="$(plugin_version "$ROOT/.claude-plugin/plugin.json")"
 
-assert_marketplace ".claude-plugin/marketplace.json"
-assert_marketplace ".grok-plugin/marketplace.json"
-assert_marketplace ".cursor-plugin/marketplace.json"
-assert_marketplace ".agents/plugins/marketplace.json"
+assert_claude_marketplace
+assert_grok_marketplace
+assert_cursor_marketplace
+assert_codex_marketplace
 
 need_file ".codex-plugin/plugin.json"
 codex_ver="$(plugin_version "$ROOT/.codex-plugin/plugin.json")"
@@ -82,6 +150,9 @@ grep -q 'skills' "$ROOT/.codex-plugin/plugin.json" || fail ".codex-plugin/plugin
 check="$ROOT/scripts/check-plugin-versions.sh"
 "$check" "v${want}" "$ROOT" || fail "plugin versions should match v${want}"
 grep -q '.codex-plugin/plugin.json' "$check" || fail "check-plugin-versions.sh should check .codex-plugin/plugin.json"
+if grep -q 'marketplace.json' "$check"; then
+  fail "check-plugin-versions.sh should gate plugin.json only, not marketplace catalogs"
+fi
 
 need_file "commands/lead.md"
 grep -q '^name: lead$' "$ROOT/commands/lead.md" || fail "commands/lead.md should declare /lead"
@@ -91,6 +162,10 @@ need_text README.md "/plugin marketplace add Kripu77/software-factory@v${want}"
 need_text README.md "/plugin install software-factory@software-factory"
 need_text README.md "grok plugin install Kripu77/software-factory@v${want}"
 need_text README.md "codex plugin marketplace add Kripu77/software-factory@v${want}"
+need_text README.md "codex plugin add software-factory@software-factory"
+if grep -q "codex plugin install" "$readme"; then
+  fail "Codex install command is plugin add, not plugin install"
+fi
 need_text README.md "git clone"
 need_text README.md "./install.sh"
 need_text README.md "from-source"

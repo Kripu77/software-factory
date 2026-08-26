@@ -10,8 +10,7 @@
     {
       "name": "software-factory",
       "source": "./",
-      "description": "Lanes, tickets, and a human merge. Skills and commands for Cursor, Claude, Grok, and Codex.",
-      "version": "1.0.0"
+      "description": "Lanes, tickets, and a human merge. Skills and commands for Cursor, Claude, Grok, and Codex."
     }
   ]
 }

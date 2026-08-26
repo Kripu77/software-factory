@@ -9,7 +9,6 @@
       "name": "software-factory",
       "source": "./",
       "description": "Lanes, tickets, and a human merge. Same skills as Cursor, Grok, and Codex.",
-      "version": "1.0.0",
       "author": {
         "name": "Kripu Khadka"
       }
