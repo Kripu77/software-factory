@@ -221,7 +221,6 @@ need_text .github/workflows/release.yml "ship-grok-catalog.sh"
 need_text .github/workflows/release.yml "XAI_MARKETPLACE_TOKEN"
 need_text .github/workflows/release.yml "GITHUB_SHA"
 need_text .github/workflows/release.yml "GITHUB_REF_NAME"
-need_text .github/workflows/release.yml "re-index"
 grep -q "secrets.XAI_MARKETPLACE_TOKEN" "$rel" || fail "release should read XAI_MARKETPLACE_TOKEN from GitHub secrets"
 if grep -qi "schedule:" "$rel" || grep -qi "cron:" "$rel"; then
   fail "catalog pin should ship on the tag, not wait for a daily cron"
@@ -235,11 +234,12 @@ fi
 if grep -q "main" "$rel" && grep -E 'ship-grok-catalog.sh.*main' "$rel"; then
   fail "catalog pin must use the tag SHA, not main"
 fi
-python3 - "$rel" <<'PY' || fail "release notes should tell a person to request Cursor re-index"
+if grep -qi "re-index" "$rel"; then
+  fail "release must not announce Cursor re-index"
+fi
+python3 - "$rel" <<'PY' || fail "release must not invent a Cursor publish API"
 import pathlib, sys
 text = pathlib.Path(sys.argv[1]).read_text()
-if "re-index" not in text:
-    raise SystemExit("missing re-index")
 if "cursor.com/api" in text or "POST" in text:
     raise SystemExit("do not invent a Cursor publish API")
 PY
@@ -250,27 +250,31 @@ if [[ -n "$extras" ]]; then
 fi
 
 readme="$ROOT/README.md"
-need_text README.md "XAI_MARKETPLACE_TOKEN"
-need_text README.md "xai-org/plugin-marketplace"
-need_text README.md "re-index"
-python3 - "$readme" <<'PY' || fail "README must describe official catalogs without filling person-only forms"
-import pathlib, sys
+python3 - "$readme" <<'PY' || fail "README install is GitHub marketplace one-liners, not a catalogs runbook"
+import pathlib, sys, re
 text = pathlib.Path(sys.argv[1]).read_text()
-lower = text.lower()
-if "official" not in lower or "catalog" not in lower:
-    raise SystemExit("README needs an official catalogs section")
-if "claude" not in lower:
-    raise SystemExit("README must cover Claude official directory")
-if "form" not in lower:
-    raise SystemExit("README must say a person submits the Claude, Cursor, and Codex forms")
-if "cursor" not in lower or "re-index" not in lower:
-    raise SystemExit("README must say a person requests Cursor re-index")
-if "codex" not in lower:
-    raise SystemExit("README must cover Codex")
-if "does not fill" not in lower and "do not fill" not in lower and "agent does not" not in lower:
-    raise SystemExit("README must say the agent does not fill those forms")
-if "follow github" not in lower and "follows github" not in lower:
-    raise SystemExit("README must say Claude later tags follow GitHub")
+if re.search(r"^## Official catalogs\s*$", text, re.M):
+    raise SystemExit("README must not have an Official catalogs runbook")
+if "XAI_MARKETPLACE_TOKEN" in text:
+    raise SystemExit("README must not name XAI_MARKETPLACE_TOKEN")
+if "re-index" in text.lower():
+    raise SystemExit("README must not announce Cursor re-index")
+if "daily SHA cron" in text or "daily sha cron" in text.lower():
+    raise SystemExit("README must not mention the xAI daily SHA cron")
+start = text.find("\n## Install\n")
+if start < 0:
+    raise SystemExit("README missing ## Install")
+rest = text[start + 1:]
+nxt = rest.find("\n## ")
+section = rest if nxt < 0 else rest[:nxt]
+if "a person creates the tag" in section.lower():
+    raise SystemExit("tag copy must be tag and push, not a person creates the tag")
+if "tag and push" not in section.lower():
+    raise SystemExit("Install section must say tag and push")
+if "the agent" in section.lower():
+    raise SystemExit("README install must not talk about the agent")
+if "Kripu77/software-factory@v1.0.0" not in section:
+    raise SystemExit("Install must keep GitHub marketplace one-liners at the tag")
 PY
 
 for f in scripts/pin-grok-catalog.py scripts/ship-grok-catalog.sh .github/workflows/release.yml README.md; do

@@ -101,7 +101,7 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-A person creates the tag. A push to main does not cut a Release.
+Tag and push. A push to main does not cut a Release.
 
 Owner and repo come from `git remote`. Workspace is this directory. Put `~/.local/bin` on PATH if `factory` is missing. Two of claude, codex, grok on PATH: set `FACTORY_RUNNER`.
 
@@ -111,20 +111,6 @@ Owner and repo come from `git remote`. Workspace is this directory. Put `~/.loca
 | Claude Code | marketplace plugin at the Release tag, or skills + slash commands under `~/.claude` |
 | Grok Build | GitHub shorthand at the Release tag, or `grok plugin install . --trust` from a clone |
 | Codex | marketplace plugin at the Release tag, or skills under `~/.codex/skills` plus `AGENTS.md` |
-
-## Official catalogs
-
-Each `vX.Y.Z` Release is the ship event. A later tag does not file a new listing form.
-
-**Grok.** The Release opens or updates a pull request on [xai-org/plugin-marketplace](https://github.com/xai-org/plugin-marketplace). The pin is that tag's commit SHA, not main. The first listing is that PR. Later tags bump the pin. It does not wait for their daily SHA cron. A person stores `XAI_MARKETPLACE_TOKEN` in this repo's GitHub Actions secrets. The workflow never merges that PR.
-
-**Claude.** A person submits the official directory form once. After they list us, later tags follow GitHub. Nothing extra from us.
-
-**Cursor.** A person submits the marketplace form once. There is no public re-index API. After a tag, a person requests re-index.
-
-**Codex.** Adding this GitHub repo as a marketplace already tracks the tag. That is the public path. A person can submit the public plugin directory form once if that directory accepts CLI plugins.
-
-The agent does not fill the Claude, Cursor, or Codex forms.
 
 ## Run
 
