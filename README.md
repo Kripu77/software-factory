@@ -29,7 +29,7 @@ Two ledgers. Keep them apart.
 
 **Your device.** `factory.sh mem write` and `mem read` hit `~/.factory/memory/factory.db`. The next `/bug` or `factory.sh feature` on this machine reads those rows at start. A worker writes `started` only if nothing is in progress, then `done`, `blocked`, or `failed`. If the db is missing, warn once and continue. Optional. Best-effort. Not git. Never `.env`.
 
-**Everyone else.** On `done`, `blocked`, or `failed` (not `started`), the write leaves one GitHub comment: the one-sentence summary, plus the PR URL when a PR exists. That comment is the public ledger. Tech lead and another device read GitHub when this machine has no rows. Memory is a hint, not a lock.
+**Everyone else.** On `done`, `blocked`, or `failed` (not `started`), the write leaves one GitHub comment. The body is the one-sentence summary, plus the PR URL when a PR exists. That comment is the public ledger. Tech lead and another device read GitHub when this machine has no rows. Memory is a hint, not a lock.
 
 Floor asks GitHub whether there is a PR, a review, and green checks. It asks this device's memory for `blocked` / `failed` and for "QA was skipped, no URL."
 

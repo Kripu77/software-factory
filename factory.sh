@@ -320,6 +320,8 @@ detect_project() {
     fi
   fi
   project_from_remote "$PROJECT"
+  OWNER="${PROJECT%%/*}"
+  REPO="${PROJECT##*/}"
 }
 
 looks_like_secret() {
@@ -361,6 +363,18 @@ validate_next_steps() {
   [[ "$NEXT_STEPS" != *$'\n'* && "$NEXT_STEPS" != *$'\r'* ]] || { echo "Need one-line --next-steps" >&2; exit 1; }
 }
 
+lift_pr_from_item() {
+  local item="$1" rest n
+  [[ -z "${PR:-}" ]] || return 0
+  case "$item" in
+    https://github.com/*/*/pull/[0-9]*)
+      rest="${item##*/pull/}"
+      n="${rest%%[!0-9]*}"
+      [[ "$n" =~ ^[0-9]+$ ]] && PR="$n"
+      ;;
+  esac
+}
+
 validate_evidence_items() {
   local remain="$1"
   local item
@@ -376,6 +390,7 @@ validate_evidence_items() {
     remain="${remain#*\"}"
     looks_like_secret "$item" && { echo "Refusing secret in mem write" >&2; exit 1; }
     is_url_or_path "$item" || { echo "Need --evidence URL or path" >&2; exit 1; }
+    lift_pr_from_item "$item"
     remain="${remain#"${remain%%[![:space:]]*}"}"
     if [[ "$remain" == ,* ]]; then
       remain="${remain#,}"
@@ -403,6 +418,7 @@ normalize_evidence() {
     return
   fi
   is_url_or_path "$EVIDENCE" || { echo "Need --evidence URL or path" >&2; exit 1; }
+  lift_pr_from_item "$EVIDENCE"
   EVIDENCE="[$(json_quote "$EVIDENCE")]"
 }
 
@@ -481,11 +497,12 @@ WHERE id = (
   WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE") AND status = 'started'
   ORDER BY started_at_epoch DESC, id DESC
   LIMIT 1
-);"
+);
+CREATE TEMP TABLE _mem_hit AS SELECT changes() AS n;"
     if [[ -n "$PR" ]]; then
       sql+="
 UPDATE runs SET pr = $(sql_quote "$PR")
-WHERE changes() = 0 AND (pr IS NULL OR pr = '') AND id = (
+WHERE (SELECT n FROM _mem_hit) = 0 AND (pr IS NULL OR pr = '') AND id = (
   SELECT id FROM (
     SELECT id FROM runs
     WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE")
@@ -497,7 +514,7 @@ WHERE changes() = 0 AND (pr IS NULL OR pr = '') AND id = (
     sql+="
 INSERT INTO runs (harness, lane, project, issue, pr, status, summary, next_steps, evidence, started_at, started_at_epoch, completed_at, completed_at_epoch)
 SELECT $(sql_quote "$HARNESS"), $(sql_quote "$RUN_LANE"), $(sql_quote "$PROJECT"), $(sql_nullable "$ISSUE"), $(sql_nullable "$PR"), $(sql_quote "$STATUS"), $(sql_nullable "$SUMMARY"), $(sql_nullable "$NEXT_STEPS"), $(sql_quote "$EVIDENCE"), $(sql_quote "$now"), $epoch, $(sql_quote "$now"), $epoch
-WHERE changes() = 0;
+WHERE (SELECT n FROM _mem_hit) = 0 AND changes() = 0;
 SELECT COALESCE(
   (SELECT last_insert_rowid() WHERE last_insert_rowid() != 0 AND changes() != 0),
   (SELECT id FROM runs WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE") ORDER BY id DESC LIMIT 1)
@@ -533,7 +550,7 @@ warn_mem() {
 }
 
 ticket_comment() {
-  local body err code pr_url lane="${1:-${RUN_LANE:-$LANE}}" owner repo
+  local body err code lane="${1:-${RUN_LANE:-$LANE}}"
   case "$lane" in
     feature|docs|qa|review|ci|telemetry) ;;
     *) return 0 ;;
@@ -543,29 +560,19 @@ ticket_comment() {
     *) return 0 ;;
   esac
   [[ -n "${SUMMARY:-}" ]] || return 0
-  owner="${OWNER:-}"
-  repo="${REPO:-}"
-  if [[ -z "$owner" || -z "$repo" ]] && [[ "${PROJECT:-}" == */* ]]; then
-    owner="${owner:-${PROJECT%%/*}}"
-    repo="${repo:-${PROJECT##*/}}"
-  fi
-  [[ -n "$owner" && -n "$repo" ]] || return 0
+  [[ -n "${OWNER:-}" && -n "${REPO:-}" ]] || return 0
   [[ -n "${ISSUE:-}" || -n "${PR:-}" ]] || return 0
   command -v gh >/dev/null 2>&1 || { warn_mem "gh not installed"; return 0; }
   body="$SUMMARY"
   if [[ -n "${PR:-}" ]]; then
-    pr_url="https://github.com/${owner}/${repo}/pull/${PR}"
-  elif [[ "${EVIDENCE:-}" == *'/pull/'* ]]; then
-    pr_url="$(printf '%s' "$EVIDENCE" | grep -oE 'https://github.com/[^"]+/pull/[0-9]+' || true)"
-    pr_url="${pr_url%%$'\n'*}"
+    body+=$'\n'"$(pr_url "$PR")"
   fi
-  [[ -n "${pr_url:-}" ]] && body+=$'\n'"$pr_url"
   err="$(mktemp)"
   set +e
   if [[ -n "${ISSUE:-}" ]]; then
-    gh issue comment "$ISSUE" -R "${owner}/${repo}" --body "$body" >/dev/null 2>"$err"
+    gh issue comment "$ISSUE" -R "${OWNER}/${REPO}" --body "$body" >/dev/null 2>"$err"
   else
-    gh pr comment "$PR" -R "${owner}/${repo}" --body "$body" >/dev/null 2>"$err"
+    gh pr comment "$PR" -R "${OWNER}/${REPO}" --body "$body" >/dev/null 2>"$err"
   fi
   code=$?
   set -e
@@ -676,7 +683,6 @@ lane_mem_finish() {
       elif [[ -n "$OWNER" && -n "$REPO" && -n "$PR" ]]; then
         extra+=(--evidence "https://github.com/${OWNER}/${REPO}/pull/${PR}")
       fi
-      unset FACTORY_SKIP_TICKET_COMMENT
       lane_mem_write "$lane" "$status" "${extra[@]}"
       ;;
   esac

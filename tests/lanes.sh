@@ -22,6 +22,15 @@ bytes_under() {
   [[ "$n" -lt "$max" ]] || fail "$file is $n bytes, stay under $max"
 }
 
+fn_body() {
+  local name="$1"
+  awk -v n="$name" '
+    $0 ~ "^" n "\\(\\)" {on=1}
+    on {print}
+    on && /^}$/ {exit}
+  ' "$ROOT/factory.sh"
+}
+
 playbook() {
   local lane="$1" cmd="$2"
   need_text "lanes/${lane}.md" "mem read"
@@ -178,6 +187,25 @@ assert_news_body
 want=$'Shipped the list\nhttps://github.com/acme/widgets/pull/40'
 got="$(last_comment)"
 [[ "$got" == "$want" ]] || fail "comment body want $(printf %q "$want") got $(printf %q "$got")"
+pr="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT pr FROM runs WHERE issue = '6' ORDER BY id DESC LIMIT 1;")"
+[[ "$pr" == "40" ]] || fail "write should lift pull evidence into pr, got $pr"
+
+# --project fills owner/repo; pull evidence fills PR; comment uses pr_url
+rm -rf "$DUMP" "$TMP/memory"
+mkdir -p "$DUMP"
+PATH="$TMP/bin:$PATH" \
+  FAKE_DUMP="$DUMP" \
+  FACTORY_SH="$FACTORY" \
+  FACTORY_WORKSPACE="$WS" \
+  FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
+  "$FACTORY" mem write --lane feature --status done --harness grok --issue 8 --project acme/widgets \
+    --summary "Shipped from project" --evidence "https://github.com/acme/widgets/pull/40" >/dev/null
+assert_news_body
+want=$'Shipped from project\nhttps://github.com/acme/widgets/pull/40'
+got="$(last_comment)"
+[[ "$got" == "$want" ]] || fail "project-only comment want $(printf %q "$want") got $(printf %q "$got")"
+pr="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT pr FROM runs WHERE issue = '8';")"
+[[ "$pr" == "40" ]] || fail "project-only write should lift pr, got $pr"
 
 # Bug writes do not comment
 rm -f "$DUMP/gh" "$DUMP/comment-body"
@@ -291,5 +319,12 @@ grep -n -- "--next-steps" "$ROOT/factory.sh" | grep -q "A person merges" && fail
 
 # README public ledger is the comment, not status-plus-next-steps
 grep -q "status, URL, evidence, what next" "$ROOT/README.md" && fail "README still describes status-plus-next-steps as the ledger"
+
+fn_body ticket_comment | grep -q 'PROJECT%%' && fail "ticket_comment must not split PROJECT"
+fn_body ticket_comment | grep -q grep && fail "ticket_comment must not grep evidence"
+fn_body ticket_comment | grep -q 'local .*pr_url' && fail "ticket_comment must not shadow pr_url"
+fn_body detect_project | grep -q 'OWNER=.*PROJECT' || fail "detect_project should fill OWNER from PROJECT"
+fn_body detect_project | grep -q 'REPO=.*PROJECT' || fail "detect_project should fill REPO from PROJECT"
+fn_body lane_mem_finish | grep -q FACTORY_SKIP_TICKET_COMMENT && fail "lane_mem_finish leftover skip unset"
 
 echo "ok lanes"

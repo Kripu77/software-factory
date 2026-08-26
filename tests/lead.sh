@@ -135,7 +135,7 @@ lead_rows="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT COUNT(*) FROM runs WHERE lane 
 # Rows for the issue are in the lead prompt.
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
-"$FACTORY" mem write --harness grok --project acme/widgets --lane feature --status done --issue 7 --pr 40 --summary "Add widgets list" --next-steps "QA the PR" --evidence "https://github.com/acme/widgets/pull/40" >/dev/null
+PATH="$TMP/bin:$PATH" FAKE_DUMP="$DUMP" "$FACTORY" mem write --harness grok --project acme/widgets --lane feature --status done --issue 7 --pr 40 --summary "Add widgets list" --next-steps "QA the PR" --evidence "https://github.com/acme/widgets/pull/40" >/dev/null
 run_lead >"$TMP/out2" 2>"$TMP/err2"
 [[ -f "$DUMP/ran" ]] || fail "lead with rows should run"
 grep -q "acme/widgets" "$DUMP/prompt" || fail "lead prompt missing project: $(cat "$DUMP/prompt")"
@@ -150,7 +150,7 @@ lead_rows="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT COUNT(*) FROM runs WHERE lane 
 # Issue rows from another project still reach lead.
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
-"$FACTORY" mem write --harness grok --project other/repo --lane feature --status done --issue 7 --summary "Shipped on other remote" --evidence "https://github.com/other/repo/issues/7" >/dev/null
+PATH="$TMP/bin:$PATH" FAKE_DUMP="$DUMP" "$FACTORY" mem write --harness grok --project other/repo --lane feature --status done --issue 7 --summary "Shipped on other remote" --evidence "https://github.com/other/repo/issues/7" >/dev/null
 run_lead >"$TMP/out3" 2>"$TMP/err3"
 grep -q "Shipped on other remote" "$DUMP/prompt" || fail "lead should see issue 7 from another project: $(cat "$DUMP/prompt")"
 

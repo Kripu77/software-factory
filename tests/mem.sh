@@ -8,6 +8,13 @@ trap 'rm -rf "$TMP"' EXIT
 export FACTORY_MEMORY_DB="$TMP/memory/factory.db"
 unset FACTORY_RUNNER
 unset FACTORY_SKIP_TICKET_COMMENT
+mkdir -p "$TMP/bin"
+cat > "$TMP/bin/gh" << 'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$TMP/bin/gh"
+export PATH="$TMP/bin:$PATH"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
@@ -181,6 +188,18 @@ grep -q 'id=' "$TMP/q1" || fail "quoted summary should write"
 "$FACTORY" mem read --issue 91 >"$TMP/qr"
 grep -q "It's a one-sentence summary" "$TMP/qr" || fail "quoted summary round-trip: $(cat "$TMP/qr")"
 grep -q "/tmp/factory-evidence.txt" "$TMP/qr" || fail "path evidence missing"
+
+write --lane feature --status done --issue 94 --summary "Lift the pull URL" --evidence "https://github.com/acme/widgets/pull/40" >"$TMP/p1"
+pr="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT pr FROM runs WHERE issue = '94';")"
+[[ "$pr" == "40" ]] || fail "pull evidence should set pr, got $pr"
+
+write --lane docs --status done --issue 95 --summary "Lift JSON pull" --evidence '["https://github.com/acme/widgets/pull/41"]' >"$TMP/p2"
+pr="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT pr FROM runs WHERE issue = '95';")"
+[[ "$pr" == "41" ]] || fail "JSON pull evidence should set pr, got $pr"
+
+write --lane feature --status done --issue 96 --pr 7 --summary "Keep the given PR" --evidence "https://github.com/acme/widgets/pull/40" >"$TMP/p3"
+pr="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT pr FROM runs WHERE issue = '96';")"
+[[ "$pr" == "7" ]] || fail "explicit --pr should win, got $pr"
 
 write --lane bug --status blocked --issue 92 --summary "Need a repro URL" --next-steps "Wait on telemetry" --evidence "https://example.com/repro" >"$TMP/b1"
 grep -q 'status=blocked' "$TMP/b1" || fail "blocked write: $(cat "$TMP/b1")"
