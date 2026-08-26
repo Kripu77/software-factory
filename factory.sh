@@ -450,6 +450,69 @@ SELECT last_insert_rowid();"
   echo "id=$id status=$STATUS"
 }
 
+MEM_WARNED=0
+MEM_CONTEXT=""
+
+warn_mem() {
+  [[ "${MEM_WARNED}" -eq 0 ]] || return 0
+  MEM_WARNED=1
+  [[ -n "${1:-}" ]] || return 0
+  printf '%s\n' "$1" >&2
+}
+
+bug_mem_write() {
+  local status="$1" err code
+  err="$(mktemp)"
+  set +e
+  "$FACTORY/factory.sh" mem write \
+    --lane bug \
+    --status "$status" \
+    --harness "$RUNNER" \
+    --issue "$ISSUE" \
+    ${OWNER:+--owner "$OWNER"} \
+    ${REPO:+--repo "$REPO"} \
+    >/dev/null 2>"$err"
+  code=$?
+  set -e
+  if [[ $code -ne 0 ]]; then
+    warn_mem "$(cat "$err")"
+  fi
+  rm -f "$err"
+}
+
+bug_mem_start() {
+  local err code
+  MEM_WARNED=0
+  MEM_CONTEXT=""
+  err="$(mktemp)"
+  set +e
+  MEM_CONTEXT="$("$FACTORY/factory.sh" mem read --issue "$ISSUE" 2>"$err")"
+  code=$?
+  set -e
+  if [[ $code -ne 0 || -s "$err" ]]; then
+    warn_mem "$(cat "$err")"
+  fi
+  rm -f "$err"
+  bug_mem_write started
+}
+
+bug_mem_finish() {
+  local code="$1" db open status
+  db="$(memory_db)"
+  [[ -f "$db" ]] || return 0
+  command -v sqlite3 >/dev/null 2>&1 || return 0
+  set +e
+  open="$(sqlite3 "$db" "SELECT COUNT(*) FROM runs WHERE issue = $(sql_quote "$ISSUE") AND lane = 'bug' AND status = 'started';")"
+  set -e
+  [[ "${open:-0}" -gt 0 ]] || return 0
+  if [[ "$code" -eq 0 ]]; then
+    status=done
+  else
+    status=failed
+  fi
+  bug_mem_write "$status"
+}
+
 case "$LANE" in
   mem)
     case "$MEM_CMD" in
@@ -458,10 +521,25 @@ case "$LANE" in
       *) usage ;;
     esac
     ;;
-  feature|bug|docs)
+  feature|docs)
     need_issue
     DIR="$(repo_dir)"
     run_agent "$DIR" "$(cat "$FACTORY/lanes/${LANE}.md")"$'\n'"$HARD"       "Implement GitHub issue $(issue_url "$ISSUE") in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."
+    ;;
+  bug)
+    need_issue
+    DIR="$(repo_dir)"
+    bug_mem_start
+    prompt="Implement GitHub issue $(issue_url "$ISSUE") in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."
+    if [[ -n "${MEM_CONTEXT:-}" ]]; then
+      prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
+    fi
+    set +e
+    run_agent "$DIR" "$(cat "$FACTORY/lanes/bug.md")"$'\n'"$HARD" "$prompt"
+    code=$?
+    set -e
+    bug_mem_finish "$code"
+    exit "$code"
     ;;
   review)
     need_pr
