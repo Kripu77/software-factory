@@ -10,7 +10,6 @@ Telemetry is a plug too. Not an error inbox. It answers whether a path broke or 
 
 ![Software factory](docs/factory.png)
 
-Editable source: [`docs/factory.excalidraw`](docs/factory.excalidraw).
 
 ## How it runs
 
