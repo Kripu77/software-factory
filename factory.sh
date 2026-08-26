@@ -432,13 +432,26 @@ WHERE id = (
   WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE") AND status = 'started'
   ORDER BY started_at_epoch DESC, id DESC
   LIMIT 1
-);
+);"
+    if [[ -n "$PR" ]]; then
+      sql+="
+UPDATE runs SET pr = $(sql_quote "$PR")
+WHERE changes() = 0 AND (pr IS NULL OR pr = '') AND id = (
+  SELECT id FROM (
+    SELECT id FROM runs
+    WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE")
+    ORDER BY started_at_epoch DESC, id DESC
+    LIMIT 1
+  )
+);"
+    fi
+    sql+="
 INSERT INTO runs (harness, lane, project, issue, pr, status, summary, next_steps, evidence, started_at, started_at_epoch, completed_at, completed_at_epoch)
 SELECT $(sql_quote "$HARNESS"), $(sql_quote "$RUN_LANE"), $(sql_quote "$PROJECT"), $(sql_nullable "$ISSUE"), $(sql_nullable "$PR"), $(sql_quote "$STATUS"), $(sql_nullable "$SUMMARY"), $(sql_nullable "$NEXT_STEPS"), $(sql_quote "$EVIDENCE"), $(sql_quote "$now"), $epoch, $(sql_quote "$now"), $epoch
 WHERE changes() = 0;
 SELECT COALESCE(
   (SELECT last_insert_rowid() WHERE last_insert_rowid() != 0 AND changes() != 0),
-  (SELECT id FROM runs WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE") AND completed_at_epoch = $epoch ORDER BY id DESC LIMIT 1)
+  (SELECT id FROM runs WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE") ORDER BY id DESC LIMIT 1)
 );"
   else
     if [[ "$STATUS" == "started" ]]; then
@@ -638,15 +651,16 @@ run_mem_lane() {
 }
 
 floor_classify() {
-  local labels=""
-  if command -v gh >/dev/null 2>&1 && [[ -n "$OWNER" && -n "$REPO" ]]; then
-    labels="$(gh issue view "$ISSUE" -R "${OWNER}/${REPO}" --json labels 2>/dev/null || true)"
-  fi
-  case "$labels" in
-    *'"bug"'*|*'name": "bug'*|*[Bb]ug*) printf '%s\n' bug ;;
-    *documentation*|*docs*) printf '%s\n' docs ;;
-    *) printf '%s\n' feature ;;
-  esac
+  local name
+  command -v gh >/dev/null 2>&1 || { printf '%s\n' feature; return 0; }
+  [[ -n "$OWNER" && -n "$REPO" ]] || { printf '%s\n' feature; return 0; }
+  while IFS= read -r name; do
+    case "$name" in
+      bug) printf '%s\n' bug; return 0 ;;
+      documentation|docs) printf '%s\n' docs; return 0 ;;
+    esac
+  done < <(gh issue view "$ISSUE" -R "${OWNER}/${REPO}" --json labels --template '{{range .labels}}{{.name}}{{"\n"}}{{end}}' 2>/dev/null || true)
+  printf '%s\n' feature
 }
 
 floor_mem() {
@@ -669,17 +683,22 @@ floor_pr_from_mem() {
 }
 
 floor_pr_from_gh() {
-  local num title
+  local head num
   command -v gh >/dev/null 2>&1 || return 0
   [[ -n "$OWNER" && -n "$REPO" ]] || return 0
-  while IFS=$'\t' read -r num title; do
-    case "$title" in
-      */"$ISSUE"/*)
-        printf '%s\n' "$num"
-        return 0
-        ;;
-    esac
-  done < <(gh pr list -R "${OWNER}/${REPO}" --state open --json number,title --template '{{range .}}{{.number}}	{{.title}}{{"\n"}}{{end}}' 2>/dev/null || true)
+  head="$(git -C "$(repo_dir 2>/dev/null || echo "$WORKSPACE")" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  if [[ -n "$head" && "$head" != "main" && "$head" != "master" ]]; then
+    num="$(gh pr view --head "$head" -R "${OWNER}/${REPO}" --json number --template '{{.number}}' 2>/dev/null || true)"
+  else
+    num="$(gh pr view -R "${OWNER}/${REPO}" --json number --template '{{.number}}' 2>/dev/null || true)"
+  fi
+  [[ -n "$num" ]] && printf '%s\n' "$num"
+}
+
+floor_review_count() {
+  command -v gh >/dev/null 2>&1 || { printf '%s\n' 0; return 0; }
+  [[ -n "${PR:-}" && -n "$OWNER" && -n "$REPO" ]] || { printf '%s\n' 0; return 0; }
+  gh pr view "$PR" -R "${OWNER}/${REPO}" --json reviews --template '{{len .reviews}}' 2>/dev/null || printf '%s\n' 0
 }
 
 floor_capture_pr() {
@@ -722,7 +741,7 @@ floor_dispatch() {
 }
 
 floor_next() {
-  local raw impl s lane pr qaurl="${URL:-${FACTORY_QA_URL:-}}"
+  local raw impl s lane pr nrev qaurl="${URL:-${FACTORY_QA_URL:-}}"
   raw="$(floor_mem)"
   for lane in feature bug docs qa review ci telemetry; do
     s="$(printf '%s\n' "$raw" | latest_lane_status "$lane")"
@@ -734,7 +753,7 @@ floor_next() {
   impl="$(floor_classify)"
   if [[ "$impl" == bug ]]; then
     s="$(printf '%s\n' "$raw" | latest_lane_status telemetry)"
-    if [[ -z "$s" ]]; then
+    if [[ -z "$s" && -z "${FLOOR_DID_TEL:-}" ]]; then
       printf '%s\n' telemetry
       return 0
     fi
@@ -747,33 +766,40 @@ floor_next() {
   fi
   PR="$pr"
   s="$(printf '%s\n' "$raw" | latest_lane_status qa)"
-  if [[ -z "$s" ]]; then
-    if [[ -n "$qaurl" ]]; then
+  if [[ -n "$qaurl" ]]; then
+    if [[ -z "$s" && -z "${FLOOR_DID_QA:-}" ]]; then
       printf '%s\n' qa
-    else
-      printf '%s\n' skip-qa
+      return 0
     fi
-    return 0
+  else
+    if [[ -z "$s" && -z "${FLOOR_QA_SKIPPED:-}" ]]; then
+      printf '%s\n' skip-qa
+      return 0
+    fi
   fi
-  s="$(printf '%s\n' "$raw" | latest_lane_status review)"
-  if [[ -z "$s" ]]; then
+  nrev="$(floor_review_count)"
+  if [[ "${nrev:-0}" -eq 0 && -z "${FLOOR_DID_REVIEW:-}" ]]; then
     printf '%s\n' review
-    return 0
-  fi
-  s="$(printf '%s\n' "$raw" | latest_lane_status ci)"
-  if [[ -z "$s" ]]; then
-    printf '%s\n' ci
     return 0
   fi
   if command -v gh >/dev/null 2>&1 && gh pr checks "$PR" -R "${OWNER}/${REPO}" >/dev/null 2>&1; then
     printf '%s\n' merge
-  else
-    printf '%s\n' stop:failed
+    return 0
   fi
+  if [[ -n "${FLOOR_DID_CI:-}" ]]; then
+    printf '%s\n' stop:failed
+    return 0
+  fi
+  printf '%s\n' ci
 }
 
 floor_run() {
   local next i
+  FLOOR_QA_SKIPPED=""
+  FLOOR_DID_QA=""
+  FLOOR_DID_REVIEW=""
+  FLOOR_DID_CI=""
+  FLOOR_DID_TEL=""
   need_issue
   [[ -n "$REPO" ]] || { echo "Need --repo <name>" >&2; exit 1; }
   need_owner
@@ -793,6 +819,7 @@ floor_run() {
         return 0
         ;;
       skip-qa)
+        FLOOR_QA_SKIPPED=1
         FACTORY_SKIP_TICKET_COMMENT=1 "$FACTORY/factory.sh" mem write \
           --lane qa --status done --harness "$RUNNER" --issue "$ISSUE" ${PR:+--pr "$PR"} \
           ${OWNER:+--owner "$OWNER"} ${REPO:+--repo "$REPO"} \
@@ -811,6 +838,10 @@ floor_run() {
               *) floor_capture_pr "$next" ;;
             esac
             ;;
+          qa) FLOOR_DID_QA=1 ;;
+          review) FLOOR_DID_REVIEW=1 ;;
+          ci) FLOOR_DID_CI=1 ;;
+          telemetry) FLOOR_DID_TEL=1 ;;
         esac
         ;;
       *)

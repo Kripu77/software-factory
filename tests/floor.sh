@@ -16,7 +16,11 @@ if grep -q "Ship lane done" "$FACTORY"; then
 fi
 fn="$(awk '/^floor_run\(\)/{on=1} on{print} on && /^}$/{exit}' "$FACTORY")"
 echo "$fn" | grep -q run_agent && fail "floor must not call run_agent"
-grep -q "gh pr list" "$FACTORY" || fail "PR capture should use gh pr list, not runner stdout"
+grep -q "gh pr view" "$FACTORY" || fail "PR capture should use gh pr view, not runner stdout"
+if grep -q '*\[Bb\]ug\*' "$FACTORY"; then
+  fail "classify must not glob raw JSON for bug"
+fi
+grep -q -- "--template" "$FACTORY" || fail "classify and pr view should use gh --template"
 
 WS="$TMP/workspace"
 mkdir -p "$WS/widgets"
@@ -39,20 +43,24 @@ cat > "$TMP/bin/gh" << 'EOF'
 #!/usr/bin/env bash
 dump="${FAKE_DUMP:?}"
 printf '%s\n' "$*" >> "$dump/gh"
+n=0
+if [[ -f "$dump/dispatched" ]]; then
+  n="$(wc -l < "$dump/dispatched" | tr -d ' ')"
+fi
 case "$1 $2" in
   "issue view")
-    printf '%s\n' '{"labels":[{"name":"ready-for-agent"},{"name":"enhancement"}]}'
+    printf '%s\n' 'ready-for-agent'
+    printf '%s\n' 'enhancement'
     ;;
-  "pr list")
-    if [[ -f "$dump/after-feature" ]]; then
-      printf '%s\n' $'40\tFeat/12/widgets'
+  "pr view")
+    if [[ "$*" == *reviews* ]]; then
+      if [[ "$n" -ge 2 ]]; then printf '%s\n' 1; else printf '%s\n' 0; fi
+    else
+      if [[ -f "$dump/after-feature" ]]; then printf '%s\n' 40; fi
     fi
     ;;
   "pr checks")
-    exit "${GH_CHECKS:-0}"
-    ;;
-  "pr view")
-    printf '%s\n' '40'
+    if [[ "$n" -ge 3 ]]; then exit 0; else exit 1; fi
     ;;
 esac
 exit 0
@@ -81,8 +89,10 @@ if grep -q "dispatch qa" "$TMP/out"; then
 fi
 grep -q "a person merges" "$TMP/out" || fail "floor should stop at human merge: $(cat "$TMP/out")"
 grep -q "pull/40" "$TMP/out" || fail "merge line should include PR URL: $(cat "$TMP/out")"
-pr="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT pr FROM runs WHERE issue = '12' AND pr IS NOT NULL AND pr != '' ORDER BY id DESC LIMIT 1;")"
+pr="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT pr FROM runs WHERE issue = '12' AND lane = 'feature' ORDER BY id DESC LIMIT 1;")"
 [[ "$pr" == "40" ]] || fail "memory should have pr=40 after feature, got $pr"
+fcount="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT COUNT(*) FROM runs WHERE issue = '12' AND lane = 'feature';")"
+[[ "$fcount" == "1" ]] || fail "pr should land on the feature run, not a second row, count=$fcount"
 
 # Blocked implement stops. No review or CI.
 rm -rf "$DUMP" "$TMP/memory"
@@ -106,5 +116,23 @@ mkdir -p "$DUMP"
 PATH="$TMP/bin:$PATH" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=grok \
   "$FACTORY" ship --repo widgets --issue 12 >"$TMP/sout" 2>"$TMP/serr"
 grep -q "a person merges" "$TMP/sout" || fail "ship should run the floor: $(cat "$TMP/sout")"
+
+# Missing sqlite: GitHub still drives Feature → Review → CI
+hid="$TMP/nosqlite"
+mkdir -p "$hid"
+for cmd in bash mkdir date sed git grep dirname cat rm mktemp printf tr wc; do
+  src="$(command -v "$cmd" || true)"
+  [[ -n "$src" ]] && ln -sf "$src" "$hid/$cmd"
+done
+cp "$TMP/bin/grok" "$hid/grok"
+cp "$TMP/bin/gh" "$hid/gh"
+rm -rf "$DUMP" "$TMP/memory"
+mkdir -p "$DUMP"
+PATH="$hid" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=grok \
+  "$FACTORY" floor --repo widgets --issue 12 >"$TMP/nout" 2>"$TMP/nerr"
+grep -q "dispatch feature" "$TMP/nout" || fail "no-sqlite should dispatch feature: $(cat "$TMP/nout")"
+grep -q "dispatch review" "$TMP/nout" || fail "no-sqlite should dispatch review: $(cat "$TMP/nout")"
+grep -q "dispatch ci" "$TMP/nout" || fail "no-sqlite should dispatch ci: $(cat "$TMP/nout")"
+grep -q "a person merges" "$TMP/nout" || fail "no-sqlite should still merge from GitHub: $(cat "$TMP/nout") err=$(cat "$TMP/nerr")"
 
 echo "ok floor"
