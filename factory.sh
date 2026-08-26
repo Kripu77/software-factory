@@ -20,7 +20,7 @@ Usage:
   factory.sh mem write        --lane <lane> --status started|done|blocked|failed [--harness claude|codex|cursor|grok] [--issue <n>] [--pr <n>] [--project owner/name] [--summary s] [--next-steps s] [--evidence url-or-json]
 
 Never merges. A person merges.
-FACTORY_WORKSPACE, FACTORY_OWNER, FACTORY_RUNNER can be set instead of flags.
+Workspace defaults to this directory. Owner and repo default from git remote origin. FACTORY_RUNNER if more than one of claude, codex, grok is on PATH.
 Memory: FACTORY_MEMORY_DB (default ~/.factory/memory/factory.db). Optional. Missing db warns and continues.
 EOF
   exit 1
@@ -115,7 +115,25 @@ else
   detect_runner
 fi
 
-need_owner() { [[ -n "$OWNER" ]] || { echo "Need --owner or FACTORY_OWNER" >&2; exit 1; }; }
+infer_github() {
+  [[ -n "$OWNER" && -n "$REPO" ]] && return 0
+  local url="" project=""
+  url="$(git -C "$WORKSPACE" remote get-url origin 2>/dev/null || true)"
+  if [[ -z "$url" ]]; then
+    url="$(git remote get-url origin 2>/dev/null || true)"
+  fi
+  [[ -n "$url" ]] || return 0
+  if owner_name "$url"; then
+    project="$url"
+  else
+    project="$(printf '%s' "$url" | sed -E -e 's#^[a-zA-Z0-9+.-]+://##' -e 's#^.*@##' -e 's#^[^:/]+(:[0-9]+)?[:/]##' -e 's#\.git$##' -e 's#/$##')"
+  fi
+  owner_name "$project" || return 0
+  [[ -n "$OWNER" ]] || OWNER="${project%%/*}"
+  [[ -n "$REPO" ]] || REPO="${project##*/}"
+}
+
+need_owner() { [[ -n "$OWNER" ]] || { echo "Need --owner, FACTORY_OWNER, or a github origin remote" >&2; exit 1; }; }
 need_issue() { [[ -n "$ISSUE" ]] || { echo "Need --issue <n>" >&2; exit 1; }; }
 need_pr() { [[ -n "$PR" ]] || { echo "Need --pr <n>" >&2; exit 1; }; }
 need_question() { [[ -n "$QUESTION" ]] || { echo "Need --question" >&2; exit 1; }; }
@@ -894,6 +912,8 @@ floor_run() {
   echo "floor: too many steps" >&2
   return 1
 }
+
+infer_github
 
 case "$LANE" in
   mem)

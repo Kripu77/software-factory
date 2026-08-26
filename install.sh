@@ -21,6 +21,11 @@ echo "Factory: $FACTORY"
 mkdir -p "${HOME}/.factory/memory"
 echo "memory ${HOME}/.factory/memory"
 
+bindir="${HOME}/.local/bin"
+mkdir -p "$bindir"
+ln -sfn "$FACTORY/factory.sh" "$bindir/factory"
+echo "cli $bindir/factory"
+
 # Grok Build plugin (skills + commands). Copies into ~/.grok/installed-plugins.
 if command -v grok >/dev/null 2>&1; then
   if grok plugin list 2>/dev/null | grep -q "software-factory"; then
@@ -77,14 +82,13 @@ if [[ -n "$WORKSPACE" && -d "$WORKSPACE" ]]; then
     cp "$FACTORY/AGENTS.md" "$target"
     echo "wrote $target"
   fi
-else
-  echo "Set FACTORY_WORKSPACE to drop AGENTS.md into a product checkout (Codex and friends read it there)."
 fi
 
 echo
-echo "Cursor:  /feature /bug /review /ci /telemetry /lead /unslop /poteto-mode /qa"
-echo "Claude:  same slash commands after restart"
-echo "Grok:    grok plugin list, then /feature /unslop /poteto-mode /qa"
-echo "Codex:   AGENTS.md in the checkout"
-echo "CI door: $FACTORY/factory.sh lead --repo <name> --issue N"
+echo "Next: cd into the product repo, open grok (or claude), /lead"
+echo "Owner and repo come from git remote. Workspace is that directory."
+case ":${PATH}:" in
+  *":${HOME}/.local/bin:"*) ;;
+  *) echo "Put ${HOME}/.local/bin on PATH so \`factory lead\` works." ;;
+esac
 echo "If more than one of claude, codex, grok is on PATH, set FACTORY_RUNNER."

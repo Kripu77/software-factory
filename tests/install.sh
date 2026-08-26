@@ -28,6 +28,9 @@ need_text rules/factory.mdc "attribute"
 need_text rules/factory.mdc ".env"
 need_text factory.sh "mem read"
 need_text factory.sh "mem write"
+need_text README.md "/lead"
+need_text README.md "~/.local/bin"
+need_text README.md "git remote"
 
 hid="$TMP/bin"
 mkdir -p "$hid"
@@ -38,7 +41,10 @@ done
 
 HOME="$TMP" PATH="$hid" "$ROOT/install.sh" >"$TMP/out" 2>"$TMP/err" || fail "install exit $? err=$(cat "$TMP/err")"
 [[ -d "$TMP/.factory/memory" ]] || fail "install should create ~/.factory/memory"
+[[ -L "$TMP/.local/bin/factory" ]] || fail "install should put factory on ~/.local/bin"
+[[ "$(readlink "$TMP/.local/bin/factory")" == "$ROOT/factory.sh" ]] || fail "factory symlink should point at factory.sh"
 grep -q "memory " "$TMP/out" || fail "install should mention memory: $(cat "$TMP/out")"
+grep -qi "lead" "$TMP/out" || fail "install should tell you to /lead: $(cat "$TMP/out")"
 [[ ! -e "$TMP/.claude-mem" ]] || fail "install must not create other plugin dirs"
 [[ ! -e "$TMP/.cursor-mem" ]] || fail "install must not create other plugin dirs"
 
