@@ -42,16 +42,7 @@ def pin(catalog_path: str, sha: str, url: str) -> None:
             }
         )
     else:
-        current = found.get("source")
-        if not isinstance(current, dict):
-            found["source"] = source
-        else:
-            current["source"] = "url"
-            current["url"] = url
-            current["sha"] = sha
-            current.pop("type", None)
-            if current.get("path") in (None, "./", "."):
-                current.pop("path", None)
+        found["source"] = source
     with open(catalog_path, "w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2)
         fh.write("\n")

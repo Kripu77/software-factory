@@ -26,19 +26,16 @@ else
   plugin_url="https://github.com/Kripu77/software-factory.git"
 fi
 
-catalog="${XAI_MARKETPLACE_DIR:-}"
-if [[ -z "$catalog" ]]; then
-  login="$(gh api user --jq .login)"
-  gh repo fork "$repo" --clone=false --default-branch-only >/dev/null
-  catalog="$(mktemp -d)"
-  gh repo clone "${login}/plugin-marketplace" "$catalog" -- --depth 1
-  git -C "$catalog" remote add upstream "https://github.com/${repo}.git" 2>/dev/null || true
-  git -C "$catalog" fetch -q upstream main
-  git -C "$catalog" checkout -B "$branch" upstream/main
-else
-  login="$(gh api user --jq .login)"
-  git -C "$catalog" checkout -B "$branch"
+login="$(gh api user --jq .login)"
+gh repo fork "$repo" --clone=false --default-branch-only >/dev/null
+catalog="$(mktemp -d)"
+gh repo clone "${login}/plugin-marketplace" "$catalog" -- --depth 1
+if ! git -C "$catalog" remote get-url upstream >/dev/null 2>&1; then
+  git -C "$catalog" remote add upstream "https://github.com/${repo}.git"
 fi
+git -C "$catalog" fetch -q upstream main
+git -C "$catalog" fetch -q origin "+refs/heads/${branch}:refs/remotes/origin/${branch}" || true
+git -C "$catalog" checkout -B "$branch" upstream/main
 
 market="$catalog/.grok-plugin/marketplace.json"
 [[ -f "$market" ]] || {
@@ -49,20 +46,14 @@ market="$catalog/.grok-plugin/marketplace.json"
 existed="$(python3 -c 'import json,sys; print("yes" if any(p.get("name")=="software-factory" for p in json.load(open(sys.argv[1])).get("plugins",[])) else "no")' "$market")"
 
 python3 "$ROOT/scripts/pin-grok-catalog.py" "$market" "$sha" "$plugin_url"
-
-if [[ -f "$catalog/scripts/generate-plugin-index.py" ]]; then
-  (cd "$catalog" && python3 scripts/generate-plugin-index.py)
-fi
+(cd "$catalog" && python3 scripts/generate-plugin-index.py)
 
 if ! git -C "$catalog" config user.email >/dev/null; then
   git -C "$catalog" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
   git -C "$catalog" config user.name "github-actions[bot]"
 fi
 
-git -C "$catalog" add -- .grok-plugin/marketplace.json
-if [[ -f "$catalog/.grok-plugin/plugin-index.json" ]]; then
-  git -C "$catalog" add -- .grok-plugin/plugin-index.json
-fi
+git -C "$catalog" add -- .grok-plugin/marketplace.json .grok-plugin/plugin-index.json
 
 if git -C "$catalog" diff --cached --quiet; then
   echo "catalog already pinned to $sha"
@@ -78,7 +69,11 @@ else
 fi
 
 git -C "$catalog" commit -q -m "$msg"
-git -C "$catalog" push --force-with-lease -u origin "$branch"
+if git -C "$catalog" rev-parse --verify "refs/remotes/origin/${branch}" >/dev/null 2>&1; then
+  git -C "$catalog" push --force-with-lease="refs/heads/${branch}:refs/remotes/origin/${branch}" origin "$branch"
+else
+  git -C "$catalog" push -u origin "$branch"
+fi
 
 open_count="$(gh pr list --repo "$repo" --head "${login}:${branch}" --state open --json number --jq 'length')"
 if [[ "${open_count:-0}" != "0" ]]; then
