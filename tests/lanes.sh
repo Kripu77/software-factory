@@ -68,7 +68,7 @@ git -C "$WS/widgets" remote add origin "https://github.com/acme/widgets.git"
 DUMP="$TMP/dump"
 mkdir -p "$DUMP" "$TMP/bin"
 
-cat > "$TMP/bin/grok" << 'EOF'
+cat > "$TMP/bin/runner" << 'EOF'
 #!/usr/bin/env bash
 dump="${FAKE_DUMP:?}"
 while [[ $# -gt 0 ]]; do
@@ -80,18 +80,18 @@ while [[ $# -gt 0 ]]; do
 done
 : > "$dump/ran"
 own=()
-if [[ -z "${GROK_NO_OWNER:-}" ]]; then
+if [[ -z "${AGENT_NO_OWNER:-}" ]]; then
   own=(--owner acme --repo widgets)
 fi
-if [[ -n "${GROK_MEM_START:-}" ]]; then
-  "${FACTORY_SH:?}" mem write --lane "${GROK_LANE:?}" --status started --harness grok ${GROK_ISSUE:+--issue "$GROK_ISSUE"} ${GROK_PR:+--pr "$GROK_PR"} --project acme/widgets "${own[@]}" >/dev/null
+if [[ -n "${AGENT_MEM_START:-}" ]]; then
+  "${FACTORY_SH:?}" mem write --lane "${AGENT_LANE:?}" --status started --harness grok ${AGENT_ISSUE:+--issue "$AGENT_ISSUE"} ${AGENT_PR:+--pr "$AGENT_PR"} --project acme/widgets "${own[@]}" >/dev/null
 fi
-if [[ -n "${GROK_MEM_STATUS:-}" ]]; then
-  "${FACTORY_SH:?}" mem write --lane "${GROK_LANE:?}" --status "$GROK_MEM_STATUS" --harness grok ${GROK_ISSUE:+--issue "$GROK_ISSUE"} ${GROK_PR:+--pr "$GROK_PR"} --project acme/widgets "${own[@]}" --summary "${GROK_SUMMARY:-Lane finished}" --evidence "${GROK_EVIDENCE:-https://github.com/acme/widgets/issues/6}" --next-steps "${GROK_NEXT:-Tech lead dispatches the next lane}" >/dev/null
+if [[ -n "${AGENT_MEM_STATUS:-}" ]]; then
+  "${FACTORY_SH:?}" mem write --lane "${AGENT_LANE:?}" --status "$AGENT_MEM_STATUS" --harness grok ${AGENT_ISSUE:+--issue "$AGENT_ISSUE"} ${AGENT_PR:+--pr "$AGENT_PR"} --project acme/widgets "${own[@]}" --summary "${AGENT_SUMMARY:-Lane finished}" --evidence "${AGENT_EVIDENCE:-https://github.com/acme/widgets/issues/6}" --next-steps "${AGENT_NEXT:-Tech lead dispatches the next lane}" >/dev/null
 fi
-exit "${GROK_EXIT:-0}"
+exit "${AGENT_EXIT:-0}"
 EOF
-chmod +x "$TMP/bin/grok"
+chmod +x "$TMP/bin/runner"
 
 cat > "$TMP/bin/gh" << 'EOF'
 #!/usr/bin/env bash
@@ -111,7 +111,7 @@ run_env() {
     FACTORY_SH="$FACTORY" \
     FACTORY_WORKSPACE="$WS" \
     FACTORY_OWNER=acme \
-    FACTORY_RUNNER=grok \
+    FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
     "$@"
 }
 
@@ -173,7 +173,7 @@ grep -q "status = done" "$DUMP/prompt" || fail "second feature should see first 
 # Agent started then blocked: one row, one comment, no extra done
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
-GROK_LANE=feature GROK_ISSUE=6 GROK_MEM_START=1 GROK_MEM_STATUS=blocked GROK_SUMMARY="Need a human" \
+AGENT_LANE=feature AGENT_ISSUE=6 AGENT_MEM_START=1 AGENT_MEM_STATUS=blocked AGENT_SUMMARY="Need a human" \
   run_feature >"$TMP/bout" 2>"$TMP/berr"
 status="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT status FROM runs WHERE lane = 'feature' ORDER BY id DESC LIMIT 1;")"
 count="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT COUNT(*) FROM runs WHERE lane = 'feature';")"
@@ -184,7 +184,7 @@ count="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT COUNT(*) FROM runs WHERE lane = 'f
 # Agent done without --owner still comments once from finish
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
-GROK_LANE=feature GROK_ISSUE=6 GROK_MEM_STATUS=done GROK_NO_OWNER=1 GROK_SUMMARY="Shipped without owner flags" \
+AGENT_LANE=feature AGENT_ISSUE=6 AGENT_MEM_STATUS=done AGENT_NO_OWNER=1 AGENT_SUMMARY="Shipped without owner flags" \
   run_feature >"$TMP/nout" 2>"$TMP/nerr"
 [[ "$(gh_count)" == "1" ]] || fail "finish should comment when agent omitted owner, got $(gh_count): $(cat "$DUMP/gh" 2>/dev/null || true)"
 grep -q "issue comment 6" "$DUMP/gh" || fail "finish comment should be issue comment: $(cat "$DUMP/gh")"
@@ -192,7 +192,7 @@ grep -q "issue comment 6" "$DUMP/gh" || fail "finish comment should be issue com
 # factory.sh review writes memory and comments on the PR
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
-GROK_LANE=review GROK_PR=40 run_env "$FACTORY" review --repo widgets --pr 40 >"$TMP/rout" 2>"$TMP/rerr"
+AGENT_LANE=review AGENT_PR=40 run_env "$FACTORY" review --repo widgets --pr 40 >"$TMP/rout" 2>"$TMP/rerr"
 rstatus="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT status FROM runs WHERE lane = 'review' ORDER BY id DESC LIMIT 1;")"
 [[ "$rstatus" == "done" ]] || fail "review finish should be done, got $rstatus"
 grep -q "pr comment 40" "$DUMP/gh" || fail "review finish should gh pr comment: $(cat "$DUMP/gh" 2>/dev/null || true)"

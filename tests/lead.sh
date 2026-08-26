@@ -23,7 +23,7 @@ git -C "$WS/widgets" remote add origin "https://github.com/acme/widgets.git"
 DUMP="$TMP/dump"
 mkdir -p "$DUMP" "$TMP/bin"
 
-cat > "$TMP/bin/grok" << 'EOF'
+cat > "$TMP/bin/runner" << 'EOF'
 #!/usr/bin/env bash
 dump="${FAKE_DUMP:?}"
 while [[ $# -gt 0 ]]; do
@@ -58,9 +58,9 @@ case "${FACTORY_LANE:-}" in
     printf 'grok\n' >> "$dump/dispatched"
     ;;
 esac
-exit "${GROK_EXIT:-0}"
+exit "${AGENT_EXIT:-0}"
 EOF
-chmod +x "$TMP/bin/grok"
+chmod +x "$TMP/bin/runner"
 
 cat > "$TMP/bin/gh" << 'EOF'
 #!/usr/bin/env bash
@@ -96,7 +96,7 @@ run_lead() {
     FACTORY_SH="$FACTORY" \
     FACTORY_WORKSPACE="$WS" \
     FACTORY_OWNER=acme \
-    FACTORY_RUNNER=grok \
+    FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
     "$FACTORY" lead --issue 7 --repo widgets
 }
 
@@ -160,12 +160,12 @@ for cmd in bash mkdir date sed git grep dirname cat rm mktemp printf tr wc; do
   src="$(command -v "$cmd" || true)"
   [[ -n "$src" ]] && ln -sf "$src" "$hid/$cmd"
 done
-cp "$TMP/bin/grok" "$hid/grok"
+cp "$TMP/bin/runner" "$hid/runner"
 cp "$TMP/bin/gh" "$hid/gh"
 rm -rf "$DUMP"
 mkdir -p "$DUMP"
 set +e
-PATH="$hid" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=grok \
+PATH="$hid" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
   "$FACTORY" lead --issue 7 --repo widgets >"$TMP/nout" 2>"$TMP/nerr"
 ncode=$?
 set -e

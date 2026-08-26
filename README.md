@@ -2,21 +2,43 @@
 
 One agent doing the whole job is an intern with admin. A factory is lanes, a ticket, and a human who merges.
 
-Build software this way: classify the work, cut tracer-bullet tickets, implement on the checkout, smoke it in a browser, review like you hate the PR, watch CI until green. Then a person merges. Agents never merge.
+Classify the work. Cut tracer-bullet tickets. Implement on the checkout. Smoke it in a browser. Review like you hate the PR. Watch CI until green. A person merges. Agents never merge.
 
 The runner is a plug. Grok, Claude Code, Codex, Cursor. Same `AGENTS.md`, same skills.
 
-Telemetry is a plug too. It is not an error inbox. It watches breakage and whether the product is actually working: funnels on any path, feature completion, time-to-value. Signup drop-off is one signal. So is onboarding, checkout, invite, the core loop, or a shipped feature nobody finishes. PostHog, Datadog, Azure App Insights, CloudWatch speak the same contract. Swap the vendor. Keep the questions.
+Telemetry is a plug too. Not an error inbox. It answers whether a path broke or a feature died: signup, onboarding, checkout, invite, the core loop, a shipped screen nobody finishes. PostHog, Datadog, Azure App Insights, and CloudWatch all speak [`telemetry/CONTRACT.md`](telemetry/CONTRACT.md). Swap the vendor. Keep the questions.
 
 ![Software factory](docs/factory.png)
 
 Editable source: [`docs/factory.excalidraw`](docs/factory.excalidraw).
 
+## How it runs
+
+Open one CLI. `/lead` or `factory.sh lead` classifies, quizzes, and tickets. It does not write product code. After tickets exist it starts `factory.sh floor`. If the lead session implements, reviews, or watches CI, that run failed.
+
+Floor is bash. It starts one isolated `factory.sh` lane, waits, then starts the next. Each worker is a new process with that lane's rules. Floor does not implement. Floor does not merge.
+
+Order is implement (feature, bug, or docs), then QA if you passed a URL, else skip QA, then review, then CI. Telemetry runs first when the ticket looks like breakage or drop-off and nobody has pulled evidence yet. Stop when a person should merge, or a lane reports `blocked` or `failed`.
+
+Lanes report back. They do not dispatch the next lane. Tech lead or floor does.
+
+Cursor is a slash-command door, not a `factory.sh --runner`. `/lead` in Cursor starts `factory.sh`, which needs Claude, Codex, or Grok on PATH. Two of those installed means you set `FACTORY_RUNNER` or `--runner`. One installed means `factory.sh` uses it. It does not prefer Grok.
+
+## Handoff and hand back
+
+Two ledgers. Keep them apart.
+
+**This laptop.** `factory.sh mem write` and `mem read` hit `~/.factory/memory/factory.db`. The next `/bug` or `factory.sh feature` on this machine reads those rows at start. A worker writes `started` only if nothing is in progress, then `done`, `blocked`, or `failed`. If the db is missing, warn once and continue. Optional. Best-effort. Not git. Never `.env`.
+
+**Everyone else.** On `done`, `blocked`, or `failed` (not `started`), the write comments on the GitHub issue or PR: status, URL, evidence, what next. That comment is the public ledger. Tech lead and another laptop read GitHub when this machine has no rows. Memory is a hint, not a lock.
+
+Floor asks GitHub whether there is a PR, a review, and green checks. It asks this laptop's memory for `blocked` / `failed` and for "QA was skipped, no URL."
+
 ## Lanes
 
 | Lane | Job |
 | --- | --- |
-| Tech lead | Classify. Quiz. Ticket on the owning repo. Dispatch. Do not implement. |
+| Tech lead | Classify. Quiz. Ticket. Dispatch via `factory.sh` (usually floor). Do not implement. |
 | Telemetry | Breakage and product performance. Funnels, feature completion, errors, logs, sessions. Evidence only. Never implements. |
 | Bug | Reproduce from evidence. Web bugs: browser first, then TDD fix. |
 | Feature | Do not expand the ask. TDD, implement, unslop. |
@@ -33,25 +55,29 @@ cd software-factory
 ./install.sh
 ```
 
-One pack. Four harnesses.
+Install creates `~/.factory/memory`. It does not touch other memory plugins.
 
 | Harness | How it loads |
 | --- | --- |
 | Cursor | local plugin at `~/.cursor/plugins/local/software-factory` |
 | Claude Code | skills + slash commands under `~/.claude` |
 | Grok Build | plugin at `~/.grok/plugins/software-factory` (`grok plugin install . --trust`) |
-| Codex | skills under `~/.codex/skills` plus `AGENTS.md` in the checkout |
+| Codex | skills under `~/.codex/skills` plus `AGENTS.md` in the product checkout |
 
-Then set the product checkout:
+Then:
 
 ```bash
-export FACTORY_WORKSPACE=/path/to/your/checkout
+export FACTORY_WORKSPACE=/path/to/your-checkout
 export FACTORY_OWNER=your-github-org
 ```
 
 ## Run
 
-In Cursor, Claude, Grok, or Codex, invoke the lane:
+Start at lead:
+
+- `/lead` with owner/repo#issue
+
+Or one lane, still one ticket:
 
 - `/feature` with owner/repo#issue
 - `/bug` with owner/repo#issue
@@ -59,35 +85,46 @@ In Cursor, Claude, Grok, or Codex, invoke the lane:
 - `/ci` with owner/repo#pr
 - `/qa` with a URL or owner/repo#pr
 - `/telemetry` with the question
-- `/lead` to classify and ticket
 - `/unslop` on any writing
 - `/poteto-mode` for the writing and playbook style
 
-Headless / CI still uses the script (never merges):
+Headless. Never merges.
 
 ```bash
+./factory.sh lead   --repo api --issue 12
+./factory.sh floor  --repo api --issue 12
 ./factory.sh feature --repo api --issue 12
 ./factory.sh bug     --repo api --issue 13
 ./factory.sh review  --repo api --pr 40
 ./factory.sh ci      --repo api --pr 40
 ./factory.sh telemetry --question "login 500s last 24h"
-./factory.sh telemetry --question "where does onboarding die, last 7d"
 ./factory.sh qa --repo frontend --pr 12 --url http://localhost:3000
 ./factory.sh mem write --lane feature --status started --issue 12 --harness grok --summary "Add the memory store"
 ./factory.sh mem read --issue 12
 ```
 
-Lane runs on this machine are stored in `~/.factory/memory/factory.db`. Not git. GitHub comments stay the public ledger. `/bug` reads it at start and writes started if none in progress, then done, blocked, or failed.
+`factory.sh ship` is an alias of `floor`. QA URL is `--url` or `FACTORY_QA_URL`. `--yes` is for workers. Lead stays interactive for quiz and for `blocked`.
+
+## What this pack will not do
+
+A person still quizzes before tickets, logs in for a protected browser, and merges.
+
+Telemetry adapters in this repo are vendor notes and a contract. They do not pull production data. `/telemetry` only works if the product checkout already has an adapter wired.
+
+We used these lanes to build this factory. That does not mean they have been walked on your app. Clone onto a repo you own, set `FACTORY_WORKSPACE` and `FACTORY_OWNER`, put one worker CLI on PATH or set `FACTORY_RUNNER`, run `/lead` or `factory.sh floor --repo <name> --issue <n>`, and you merge.
+
+`./install.sh` does not make every CLI a factory.
 
 ## Hard rules
 
 - Never merge. A person merges.
 - Never `git commit --no-verify`.
-- Never read or send `.env` / `.env.local`.
+- Never read or send `.env` / `.env.local`. Never store `.env` in factory memory.
+- Never attribute factory code to other products.
 - Only the ticket or PR you were given.
 - Issues live on the owning service, not a catch-all.
 - PR title: `Type/<issue.number>/<short description>` (`Feat`, `Bug`, `Arch`, `Chore`, `Refactor`, `General`).
 
 ## Telemetry
 
-See [`telemetry/CONTRACT.md`](telemetry/CONTRACT.md). Breakage and product performance. Funnels are any instrumented path, not one screen. Session replay is optional. If the vendor cannot replay or cannot funnel, say so. Do not invent either.
+See [`telemetry/CONTRACT.md`](telemetry/CONTRACT.md). Funnels are any instrumented path, not one screen. Session replay is optional. If the vendor cannot replay or cannot funnel, say so. Do not invent either. This pack does not ship a live PostHog, Datadog, App Insights, or CloudWatch client. Wire the adapter in the product. Then ask `/telemetry`.

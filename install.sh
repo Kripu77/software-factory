@@ -18,6 +18,9 @@ link_skills() {
 
 echo "Factory: $FACTORY"
 
+mkdir -p "${HOME}/.factory/memory"
+echo "memory ${HOME}/.factory/memory"
+
 # Grok Build plugin (skills + commands). Copies into ~/.grok/installed-plugins.
 if command -v grok >/dev/null 2>&1; then
   if grok plugin list 2>/dev/null | grep -q "software-factory"; then
@@ -83,4 +86,5 @@ echo "Cursor:  /feature /bug /review /ci /telemetry /lead /unslop /poteto-mode /
 echo "Claude:  same slash commands after restart"
 echo "Grok:    grok plugin list, then /feature /unslop /poteto-mode /qa"
 echo "Codex:   AGENTS.md in the checkout"
-echo "CI door: $FACTORY/factory.sh feature --repo <name> --issue N"
+echo "CI door: $FACTORY/factory.sh lead --repo <name> --issue N"
+echo "If more than one of claude, codex, grok is on PATH, set FACTORY_RUNNER."

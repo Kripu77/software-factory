@@ -9,31 +9,48 @@ RUNNER="${FACTORY_RUNNER:-}"
 usage() {
   cat <<EOF
 Usage:
-  factory.sh feature|bug|docs --repo <name> --issue <n> [--owner org] [--runner grok|claude|codex] [--yes]
-  factory.sh review|ci        --repo <name> --pr <n>     [--owner org] [--runner ...] [--yes]
+  factory.sh feature|bug|docs --repo <name> --issue <n> [--owner org] [--runner claude|codex|grok] [--yes]
+  factory.sh review|ci        --repo <name> --pr <n>     [--owner org] [--runner claude|codex|grok] [--yes]
   factory.sh floor|ship       --repo <name> --issue <n> [--owner org] [--runner ...] [--yes] [--url <app>]
   factory.sh lead             --issue <n> [--repo <name>] [--yes]
   factory.sh telemetry        --question "<what broke>" [--yes]
   factory.sh qa               --repo <name> --pr <n> [--url <app>]
   factory.sh qa               --url <app>
   factory.sh mem read         [--issue <n>] [--pr <n>] [--project owner/name] [--limit n]
-  factory.sh mem write        --lane <lane> --status started|done|blocked|failed [--harness grok|claude|codex|cursor] [--issue <n>] [--pr <n>] [--project owner/name] [--summary s] [--next-steps s] [--evidence url-or-json]
+  factory.sh mem write        --lane <lane> --status started|done|blocked|failed [--harness claude|codex|cursor|grok] [--issue <n>] [--pr <n>] [--project owner/name] [--summary s] [--next-steps s] [--evidence url-or-json]
 
 Never merges. A person merges.
 FACTORY_WORKSPACE, FACTORY_OWNER, FACTORY_RUNNER can be set instead of flags.
-Memory: FACTORY_MEMORY_DB (default ~/.factory/memory/factory.db).
+Memory: FACTORY_MEMORY_DB (default ~/.factory/memory/factory.db). Optional. Missing db warns and continues.
 EOF
   exit 1
 }
 
 detect_runner() {
+  local found="" name
   if [[ -n "$RUNNER" ]]; then
-    return
+    if [[ "$RUNNER" == "cursor" ]]; then
+      echo "Cursor is a slash-command door, not a factory.sh --runner." >&2
+      exit 1
+    fi
+    command -v "$RUNNER" >/dev/null 2>&1 || { echo "No runner '$RUNNER' on PATH. Set FACTORY_RUNNER or --runner." >&2; exit 1; }
+    return 0
   fi
-  if command -v grok >/dev/null 2>&1; then RUNNER=grok; return; fi
-  if command -v claude >/dev/null 2>&1; then RUNNER=claude; return; fi
-  if command -v codex >/dev/null 2>&1; then RUNNER=codex; return; fi
-  echo "No runner. Install grok, claude, or codex, or set FACTORY_RUNNER." >&2
+  for name in claude codex grok; do
+    if command -v "$name" >/dev/null 2>&1; then
+      found="${found:+$found }$name"
+    fi
+  done
+  set -- $found
+  if [[ $# -eq 1 ]]; then
+    RUNNER="$1"
+    return 0
+  fi
+  if [[ $# -eq 0 ]]; then
+    echo "No runner on PATH. Install claude, codex, or grok, or set FACTORY_RUNNER / --runner." >&2
+    exit 1
+  fi
+  echo "Multiple runners on PATH: $found. Set FACTORY_RUNNER or --runner." >&2
   exit 1
 }
 
@@ -103,6 +120,16 @@ need_issue() { [[ -n "$ISSUE" ]] || { echo "Need --issue <n>" >&2; exit 1; }; }
 need_pr() { [[ -n "$PR" ]] || { echo "Need --pr <n>" >&2; exit 1; }; }
 need_question() { [[ -n "$QUESTION" ]] || { echo "Need --question" >&2; exit 1; }; }
 
+record_harness() {
+  case "${RUNNER:-}" in
+    claude|cursor|codex|grok) printf '%s\n' "$RUNNER"; return 0 ;;
+  esac
+  case "${FACTORY_HARNESS:-}" in
+    claude|cursor|codex|grok) printf '%s\n' "$FACTORY_HARNESS"; return 0 ;;
+  esac
+  return 1
+}
+
 repo_dir() {
   [[ -n "$REPO" ]] || { echo "Need --repo <name>" >&2; exit 1; }
   if [[ -d "$WORKSPACE/$REPO/.git" ]]; then
@@ -136,8 +163,12 @@ run_agent() {
       ( cd "$cwd" && FACTORY_LANE="$LANE" codex "${extra[@]}" "$prompt"$'\n\n'"$rules" )
       ;;
     *)
-      echo "Unknown runner: $RUNNER (grok|claude|codex)" >&2
-      exit 1
+      command -v "$RUNNER" >/dev/null 2>&1 || { echo "No runner '$RUNNER' on PATH." >&2; exit 1; }
+      if [[ "$YES" -eq 1 ]]; then
+        ( cd "$cwd" && FACTORY_LANE="$LANE" "$RUNNER" --yes --rules "$rules" -p "$prompt" )
+      else
+        ( cd "$cwd" && FACTORY_LANE="$LANE" "$RUNNER" --rules "$rules" -p "$prompt" )
+      fi
       ;;
   esac
 }
@@ -546,14 +577,15 @@ mem_read_context() {
 }
 
 lane_mem_write() {
-  local lane="$1" status="$2" err code
+  local lane="$1" status="$2" err code h
   shift 2
+  h="$(record_harness)" || { warn_mem "Need FACTORY_HARNESS or --runner claude|codex|cursor|grok to record memory"; return 0; }
   err="$(mktemp)"
   set +e
   "$FACTORY/factory.sh" mem write \
     --lane "$lane" \
     --status "$status" \
-    --harness "$RUNNER" \
+    --harness "$h" \
     ${ISSUE:+--issue "$ISSUE"} \
     ${PR:+--pr "$PR"} \
     ${OWNER:+--owner "$OWNER"} \
@@ -704,13 +736,14 @@ floor_review_count() {
 }
 
 floor_capture_pr() {
-  local lane="$1" num
+  local lane="$1" num h
   num="$(floor_pr_from_mem)"
   [[ -n "$num" ]] || num="$(floor_pr_from_gh)"
   [[ -n "$num" ]] || return 0
   PR="$num"
+  h="$(record_harness)" || return 0
   FACTORY_SKIP_TICKET_COMMENT=1 "$FACTORY/factory.sh" mem write \
-    --lane "$lane" --status done --harness "$RUNNER" --issue "$ISSUE" --pr "$num" \
+    --lane "$lane" --status done --harness "$h" --issue "$ISSUE" --pr "$num" \
     ${OWNER:+--owner "$OWNER"} ${REPO:+--repo "$REPO"} \
     --summary "Opened PR ${num}." --next-steps "QA, review, CI" >/dev/null 2>/dev/null || true
 }
@@ -796,7 +829,7 @@ floor_next() {
 }
 
 floor_run() {
-  local next i
+  local next i h
   FLOOR_QA_SKIPPED=""
   FLOOR_DID_QA=""
   FLOOR_DID_REVIEW=""
@@ -825,10 +858,13 @@ floor_run() {
         ;;
       skip-qa)
         FLOOR_QA_SKIPPED=1
-        FACTORY_SKIP_TICKET_COMMENT=1 "$FACTORY/factory.sh" mem write \
-          --lane qa --status done --harness "$RUNNER" --issue "$ISSUE" ${PR:+--pr "$PR"} \
-          ${OWNER:+--owner "$OWNER"} ${REPO:+--repo "$REPO"} \
-          --summary "QA skipped, no URL." --next-steps "Review the PR" >/dev/null 2>/dev/null || true
+        h="$(record_harness)" || h=""
+        if [[ -n "$h" ]]; then
+          FACTORY_SKIP_TICKET_COMMENT=1 "$FACTORY/factory.sh" mem write \
+            --lane qa --status done --harness "$h" --issue "$ISSUE" ${PR:+--pr "$PR"} \
+            ${OWNER:+--owner "$OWNER"} ${REPO:+--repo "$REPO"} \
+            --summary "QA skipped, no URL." --next-steps "Review the PR" >/dev/null 2>/dev/null || true
+        fi
         continue
         ;;
       feature|bug|docs|qa|review|ci|telemetry)

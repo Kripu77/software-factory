@@ -38,7 +38,7 @@ git -C "$WS/widgets" remote add origin "https://github.com/acme/widgets.git"
 DUMP="$TMP/dump"
 mkdir -p "$DUMP" "$TMP/bin"
 
-cat > "$TMP/bin/grok" << 'EOF'
+cat > "$TMP/bin/runner" << 'EOF'
 #!/usr/bin/env bash
 dump="${FAKE_DUMP:?}"
 while [[ $# -gt 0 ]]; do
@@ -54,15 +54,15 @@ if command -v sqlite3 >/dev/null 2>&1 && [[ -f "${FACTORY_MEMORY_DB:-}" ]]; then
 else
   : > "$dump/status-at-start"
 fi
-if [[ -n "${GROK_MEM_START:-}" ]]; then
+if [[ -n "${AGENT_MEM_START:-}" ]]; then
   "${FACTORY_SH:?}" mem write --lane bug --status started --harness grok --issue 5 --project acme/widgets >/dev/null
 fi
-if [[ -n "${GROK_MEM_STATUS:-}" ]]; then
-  "${FACTORY_SH:?}" mem write --lane bug --status "$GROK_MEM_STATUS" --harness grok --issue 5 --project acme/widgets --summary "${GROK_SUMMARY:-Lane finished}" --evidence "${GROK_EVIDENCE:-https://github.com/acme/widgets/issues/5}" --next-steps "${GROK_NEXT:-Tech lead dispatches the next lane}" >/dev/null
+if [[ -n "${AGENT_MEM_STATUS:-}" ]]; then
+  "${FACTORY_SH:?}" mem write --lane bug --status "$AGENT_MEM_STATUS" --harness grok --issue 5 --project acme/widgets --summary "${AGENT_SUMMARY:-Lane finished}" --evidence "${AGENT_EVIDENCE:-https://github.com/acme/widgets/issues/5}" --next-steps "${AGENT_NEXT:-Tech lead dispatches the next lane}" >/dev/null
 fi
-exit "${GROK_EXIT:-0}"
+exit "${AGENT_EXIT:-0}"
 EOF
-chmod +x "$TMP/bin/grok"
+chmod +x "$TMP/bin/runner"
 
 run_bug() {
   PATH="$TMP/bin:$PATH" \
@@ -70,7 +70,7 @@ run_bug() {
     FACTORY_SH="$FACTORY" \
     FACTORY_WORKSPACE="$WS" \
     FACTORY_OWNER=acme \
-    FACTORY_RUNNER=grok \
+    FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
     "$FACTORY" bug --repo widgets --issue 5
 }
 
@@ -152,7 +152,7 @@ grep -q "status = done" "$DUMP/prompt" || fail "second run should see first run 
 # Fake runner writes started then blocked; one row, blocked, no extra done
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
-GROK_MEM_START=1 GROK_MEM_STATUS=blocked GROK_SUMMARY="Need a human login" run_bug >"$TMP/bout" 2>"$TMP/berr"
+AGENT_MEM_START=1 AGENT_MEM_STATUS=blocked AGENT_SUMMARY="Need a human login" run_bug >"$TMP/bout" 2>"$TMP/berr"
 [[ "$(status_for)" == "blocked" ]] || fail "blocked outcome should stick, got $(status_for)"
 [[ "$(count_runs)" == "1" ]] || fail "started then blocked should be one row, count=$(count_runs)"
 [[ "$(count_status done)" == "0" ]] || fail "finish must not clobber blocked with done"
@@ -162,7 +162,7 @@ GROK_MEM_START=1 GROK_MEM_STATUS=blocked GROK_SUMMARY="Need a human login" run_b
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
 set +e
-GROK_MEM_STATUS=failed GROK_SUMMARY="Tests did not pass" GROK_EXIT=1 run_bug >"$TMP/fout" 2>"$TMP/ferr"
+AGENT_MEM_STATUS=failed AGENT_SUMMARY="Tests did not pass" AGENT_EXIT=1 run_bug >"$TMP/fout" 2>"$TMP/ferr"
 fcode=$?
 set -e
 [[ $fcode -ne 0 ]] || fail "failed runner should fail the lane"
@@ -176,11 +176,11 @@ for cmd in bash mkdir date sed git grep dirname cat rm mktemp printf; do
   src="$(command -v "$cmd" || true)"
   [[ -n "$src" ]] && ln -sf "$src" "$hid/$cmd"
 done
-cp "$TMP/bin/grok" "$hid/grok"
+cp "$TMP/bin/runner" "$hid/runner"
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
 set +e
-PATH="$hid" FAKE_DUMP="$DUMP" FACTORY_SH="$FACTORY" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=grok \
+PATH="$hid" FAKE_DUMP="$DUMP" FACTORY_SH="$FACTORY" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
   "$FACTORY" bug --repo widgets --issue 5 >"$TMP/nout" 2>"$TMP/nerr"
 ncode=$?
 set -e
