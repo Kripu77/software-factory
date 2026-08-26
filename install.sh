@@ -65,7 +65,7 @@ if [[ -d "${HOME}/.cursor" ]]; then
   echo "linked cursor plugin $dest"
 fi
 
-WORKSPACE="${FACTORY_WORKSPACE:-}"
+WORKSPACE="${1:-${FACTORY_WORKSPACE:-}}"
 if [[ -n "$WORKSPACE" && -d "$WORKSPACE" ]]; then
   target="$WORKSPACE/AGENTS.md"
   if [[ -f "$target" ]] && grep -q "Software factory" "$target"; then

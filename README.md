@@ -54,7 +54,7 @@ cd software-factory
 ./install.sh
 ```
 
-That creates `~/.factory/memory`, installs the plugin, and puts `factory` on `~/.local/bin`. Then:
+That creates `~/.factory/memory`, installs the plugin, and puts `factory` on `~/.local/bin`. Codex: `./install.sh /path/to/your-checkout` also writes `AGENTS.md` there. Then:
 
 ```bash
 cd /path/to/your-checkout

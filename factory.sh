@@ -123,12 +123,7 @@ infer_github() {
     url="$(git remote get-url origin 2>/dev/null || true)"
   fi
   [[ -n "$url" ]] || return 0
-  if owner_name "$url"; then
-    project="$url"
-  else
-    project="$(printf '%s' "$url" | sed -E -e 's#^[a-zA-Z0-9+.-]+://##' -e 's#^.*@##' -e 's#^[^:/]+(:[0-9]+)?[:/]##' -e 's#\.git$##' -e 's#/$##')"
-  fi
-  owner_name "$project" || return 0
+  project="$(github_owner_repo "$url")" || return 0
   [[ -n "$OWNER" ]] || OWNER="${project%%/*}"
   [[ -n "$REPO" ]] || REPO="${project##*/}"
 }
@@ -292,16 +287,21 @@ owner_name() {
   [[ "$1" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]
 }
 
-project_from_remote() {
-  local raw="$1"
-  local project
-  [[ -n "$raw" ]] || { echo "Need --project owner/name" >&2; exit 1; }
+github_owner_repo() {
+  local raw="$1" project
+  [[ -n "$raw" ]] || return 1
   if owner_name "$raw"; then
-    PROJECT="$raw"
-    return
+    printf '%s\n' "$raw"
+    return 0
   fi
   project="$(printf '%s' "$raw" | sed -E -e 's#^[a-zA-Z0-9+.-]+://##' -e 's#^.*@##' -e 's#^[^:/]+(:[0-9]+)?[:/]##' -e 's#\.git$##' -e 's#/$##')"
-  owner_name "$project" || { echo "Need --project owner/name" >&2; exit 1; }
+  owner_name "$project" || return 1
+  printf '%s\n' "$project"
+}
+
+project_from_remote() {
+  local project
+  project="$(github_owner_repo "$1")" || { echo "Need --project owner/name" >&2; exit 1; }
   PROJECT="$project"
 }
 
