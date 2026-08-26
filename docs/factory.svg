@@ -88,14 +88,13 @@
 <text class="muted" x="310" y="610" text-anchor="middle" font-size="13">funnels · perf</text>
 <path d="M30 400 L368 340" fill="none" stroke="#868e96" stroke-width="1.3" stroke-dasharray="6 5" marker-end="url(#md)"/>
 <text class="muted" x="140" y="360" text-anchor="middle" font-size="12">report</text>
-<rect x="800" y="400" width="230" height="88" rx="16" fill="#fff" stroke="#868e96" stroke-width="1.5" stroke-dasharray="7 5"/>
-<text x="915" y="436" text-anchor="middle" font-size="16" font-weight="600">this laptop</text>
-<text class="muted" x="915" y="458" text-anchor="middle" font-size="13">mem read / write</text>
-<text class="muted" x="915" y="476" text-anchor="middle" font-size="12">~/.factory/memory</text>
-<rect x="800" y="508" width="230" height="88" rx="16" fill="#fff" stroke="#868e96" stroke-width="1.5" stroke-dasharray="7 5"/>
-<text x="915" y="544" text-anchor="middle" font-size="16" font-weight="600">GitHub comments</text>
-<text class="muted" x="915" y="566" text-anchor="middle" font-size="13">done · blocked · failed</text>
-<text class="muted" x="915" y="584" text-anchor="middle" font-size="12">public ledger</text>
+<rect x="790" y="390" width="250" height="220" rx="16" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="915" y="440" text-anchor="middle" font-size="22" font-weight="600">Memory</text>
+<text class="muted" x="915" y="468" text-anchor="middle" font-size="14">this laptop</text>
+<text class="muted" x="915" y="488" text-anchor="middle" font-size="14">factory.db</text>
+<text x="915" y="530" text-anchor="middle" font-size="14" font-weight="600">GitHub comments</text>
+<text class="muted" x="915" y="552" text-anchor="middle" font-size="13">public ledger</text>
+<text class="muted" x="915" y="572" text-anchor="middle" font-size="13">done · blocked · failed</text>
 <path d="M728 460 L798 444" fill="none" stroke="#868e96" stroke-width="1.3" stroke-dasharray="6 5" marker-end="url(#md)"/>
 <text class="muted" x="770" y="430" text-anchor="middle" font-size="12">report</text>
 <path d="M668 728 L800 552" fill="none" stroke="#868e96" stroke-width="1.3" stroke-dasharray="6 5" marker-end="url(#md)"/>
