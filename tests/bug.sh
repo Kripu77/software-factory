@@ -117,9 +117,12 @@ bytes_under lanes/bug.md 1000
 bytes_under commands/bug.md 1000
 grep -q -- "--summary" "$ROOT/lanes/bug.md" && fail "put mem flags in /bug or the injected prompt, not a second dump in the lane"
 
-fn_body bug_mem_start | grep -Eq 'bug_mem_write started|--status started' && fail "wrapper must not write started"
-fn_body bug_mem_finish | grep -q sqlite3 && fail "bug_mem_finish must not call sqlite3"
-fn_body bug_mem_finish | grep -q "mem read\|bug_mem_write\|mem write" || fail "bug_mem_finish must go through factory.sh mem"
+fn_body mem_read_context | grep -Eq 'lane_mem_write started|--status started' && fail "wrapper must not write started"
+fn_body lane_mem_finish | grep -q sqlite3 && fail "lane_mem_finish must not call sqlite3"
+fn_body lane_mem_finish | grep -q "mem read\|lane_mem_write\|mem write" || fail "lane_mem_finish must go through factory.sh mem"
+if grep -Eq "bug_mem_start|bug_mem_finish|bug_mem_write|bug_latest_status" "$ROOT/factory.sh"; then
+  fail "fold bug into run_mem_lane"
+fi
 
 # Missing DB: warn once, lane still succeeds, finish records done
 rm -rf "$DUMP" "$TMP/memory"
