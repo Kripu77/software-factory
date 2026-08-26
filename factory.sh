@@ -11,7 +11,7 @@ usage() {
 Usage:
   factory.sh feature|bug|docs --repo <name> --issue <n> [--owner org] [--runner grok|claude|codex] [--yes]
   factory.sh review|ci        --repo <name> --pr <n>     [--owner org] [--runner ...] [--yes]
-  factory.sh ship             --repo <name> --issue <n> --pr <n> [--yes]
+  factory.sh floor|ship       --repo <name> --issue <n> [--owner org] [--runner ...] [--yes] [--url <app>]
   factory.sh lead             --issue <n> [--repo <name>] [--yes]
   factory.sh telemetry        --question "<what broke>" [--yes]
   factory.sh qa               --repo <name> --pr <n> [--url <app>]
@@ -432,13 +432,26 @@ WHERE id = (
   WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE") AND status = 'started'
   ORDER BY started_at_epoch DESC, id DESC
   LIMIT 1
-);
+);"
+    if [[ -n "$PR" ]]; then
+      sql+="
+UPDATE runs SET pr = $(sql_quote "$PR")
+WHERE changes() = 0 AND (pr IS NULL OR pr = '') AND id = (
+  SELECT id FROM (
+    SELECT id FROM runs
+    WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE")
+    ORDER BY started_at_epoch DESC, id DESC
+    LIMIT 1
+  )
+);"
+    fi
+    sql+="
 INSERT INTO runs (harness, lane, project, issue, pr, status, summary, next_steps, evidence, started_at, started_at_epoch, completed_at, completed_at_epoch)
 SELECT $(sql_quote "$HARNESS"), $(sql_quote "$RUN_LANE"), $(sql_quote "$PROJECT"), $(sql_nullable "$ISSUE"), $(sql_nullable "$PR"), $(sql_quote "$STATUS"), $(sql_nullable "$SUMMARY"), $(sql_nullable "$NEXT_STEPS"), $(sql_quote "$EVIDENCE"), $(sql_quote "$now"), $epoch, $(sql_quote "$now"), $epoch
 WHERE changes() = 0;
 SELECT COALESCE(
   (SELECT last_insert_rowid() WHERE last_insert_rowid() != 0 AND changes() != 0),
-  (SELECT id FROM runs WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE") AND completed_at_epoch = $epoch ORDER BY id DESC LIMIT 1)
+  (SELECT id FROM runs WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE") ORDER BY id DESC LIMIT 1)
 );"
   else
     if [[ "$STATUS" == "started" ]]; then
@@ -637,6 +650,210 @@ run_mem_lane() {
   return "$code"
 }
 
+floor_classify() {
+  local name
+  command -v gh >/dev/null 2>&1 || { printf '%s\n' feature; return 0; }
+  [[ -n "$OWNER" && -n "$REPO" ]] || { printf '%s\n' feature; return 0; }
+  while IFS= read -r name; do
+    case "$name" in
+      bug) printf '%s\n' bug; return 0 ;;
+      documentation|docs) printf '%s\n' docs; return 0 ;;
+    esac
+  done < <(gh issue view "$ISSUE" -R "${OWNER}/${REPO}" --json labels --template '{{range .labels}}{{.name}}{{"\n"}}{{end}}' 2>/dev/null || true)
+  printf '%s\n' feature
+}
+
+floor_mem() {
+  "$FACTORY/factory.sh" mem read --issue "$ISSUE" 2>/dev/null || true
+}
+
+floor_pr_from_mem() {
+  local line val
+  while IFS= read -r line; do
+    case "$line" in
+      *"pr = "*)
+        val="${line##* = }"
+        if [[ -n "$val" ]]; then
+          printf '%s\n' "$val"
+          return 0
+        fi
+        ;;
+    esac
+  done <<< "$(floor_mem)"
+}
+
+floor_pr_from_gh() {
+  local head num
+  command -v gh >/dev/null 2>&1 || return 0
+  [[ -n "$OWNER" && -n "$REPO" ]] || return 0
+  head="$(git -C "$(repo_dir 2>/dev/null || echo "$WORKSPACE")" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  if [[ -n "$head" && "$head" != "main" && "$head" != "master" ]]; then
+    num="$(gh pr view --head "$head" -R "${OWNER}/${REPO}" --json number --template '{{.number}}' 2>/dev/null || true)"
+  else
+    num="$(gh pr view -R "${OWNER}/${REPO}" --json number --template '{{.number}}' 2>/dev/null || true)"
+  fi
+  [[ -n "$num" ]] && printf '%s\n' "$num"
+}
+
+floor_review_count() {
+  command -v gh >/dev/null 2>&1 || { printf '%s\n' 0; return 0; }
+  [[ -n "${PR:-}" && -n "$OWNER" && -n "$REPO" ]] || { printf '%s\n' 0; return 0; }
+  gh pr view "$PR" -R "${OWNER}/${REPO}" --json reviews --template '{{len .reviews}}' 2>/dev/null || printf '%s\n' 0
+}
+
+floor_capture_pr() {
+  local lane="$1" num
+  num="$(floor_pr_from_mem)"
+  [[ -n "$num" ]] || num="$(floor_pr_from_gh)"
+  [[ -n "$num" ]] || return 0
+  PR="$num"
+  FACTORY_SKIP_TICKET_COMMENT=1 "$FACTORY/factory.sh" mem write \
+    --lane "$lane" --status done --harness "$RUNNER" --issue "$ISSUE" --pr "$num" \
+    ${OWNER:+--owner "$OWNER"} ${REPO:+--repo "$REPO"} \
+    --summary "Opened PR ${num}." --next-steps "QA, review, CI" >/dev/null 2>/dev/null || true
+}
+
+floor_cmd() {
+  if [[ "$YES" -eq 1 ]]; then
+    "$FACTORY/factory.sh" "$@" --yes
+  else
+    "$FACTORY/factory.sh" "$@"
+  fi
+}
+
+floor_dispatch() {
+  local lane="$1" qaurl="${URL:-${FACTORY_QA_URL:-}}"
+  echo "dispatch $lane"
+  case "$lane" in
+    feature|bug|docs)
+      floor_cmd "$lane" --repo "$REPO" --issue "$ISSUE" --owner "$OWNER" --runner "$RUNNER"
+      ;;
+    review|ci)
+      floor_cmd "$lane" --repo "$REPO" --pr "$PR" --issue "$ISSUE" --owner "$OWNER" --runner "$RUNNER"
+      ;;
+    qa)
+      floor_cmd qa --repo "$REPO" --pr "$PR" --issue "$ISSUE" --url "$qaurl" --owner "$OWNER" --runner "$RUNNER"
+      ;;
+    telemetry)
+      floor_cmd telemetry --question "evidence for issue ${ISSUE}" --repo "$REPO" --owner "$OWNER" --runner "$RUNNER"
+      ;;
+  esac
+}
+
+floor_next() {
+  local raw impl s lane pr nrev qaurl="${URL:-${FACTORY_QA_URL:-}}"
+  raw="$(floor_mem)"
+  for lane in feature bug docs qa review ci telemetry; do
+    s="$(printf '%s\n' "$raw" | latest_lane_status "$lane")"
+    case "$s" in
+      blocked) printf '%s\n' stop:blocked; return 0 ;;
+      failed) printf '%s\n' stop:failed; return 0 ;;
+    esac
+  done
+  impl="$(floor_classify)"
+  if [[ "$impl" == bug ]]; then
+    s="$(printf '%s\n' "$raw" | latest_lane_status telemetry)"
+    if [[ -z "$s" && -z "${FLOOR_DID_TEL:-}" ]]; then
+      printf '%s\n' telemetry
+      return 0
+    fi
+  fi
+  pr="$(floor_pr_from_mem)"
+  [[ -n "$pr" ]] || pr="$(floor_pr_from_gh)"
+  if [[ -z "$pr" ]]; then
+    printf '%s\n' "$impl"
+    return 0
+  fi
+  PR="$pr"
+  s="$(printf '%s\n' "$raw" | latest_lane_status qa)"
+  if [[ -n "$qaurl" ]]; then
+    if [[ -z "$s" && -z "${FLOOR_DID_QA:-}" ]]; then
+      printf '%s\n' qa
+      return 0
+    fi
+  else
+    if [[ -z "$s" && -z "${FLOOR_QA_SKIPPED:-}" ]]; then
+      printf '%s\n' skip-qa
+      return 0
+    fi
+  fi
+  nrev="$(floor_review_count)"
+  if [[ "${nrev:-0}" -eq 0 && -z "${FLOOR_DID_REVIEW:-}" ]]; then
+    printf '%s\n' review
+    return 0
+  fi
+  if command -v gh >/dev/null 2>&1 && gh pr checks "$PR" -R "${OWNER}/${REPO}" >/dev/null 2>&1; then
+    printf '%s\n' merge
+    return 0
+  fi
+  if [[ -n "${FLOOR_DID_CI:-}" ]]; then
+    printf '%s\n' stop:failed
+    return 0
+  fi
+  printf '%s\n' ci
+}
+
+floor_run() {
+  local next i
+  FLOOR_QA_SKIPPED=""
+  FLOOR_DID_QA=""
+  FLOOR_DID_REVIEW=""
+  FLOOR_DID_CI=""
+  FLOOR_DID_TEL=""
+  need_issue
+  [[ -n "$REPO" ]] || { echo "Need --repo <name>" >&2; exit 1; }
+  need_owner
+  for i in 1 2 3 4 5 6 7 8; do
+    next="$(floor_next)"
+    case "$next" in
+      stop:blocked)
+        echo "blocked. stop."
+        return 0
+        ;;
+      stop:failed)
+        echo "failed. stop."
+        return 1
+        ;;
+      merge)
+        echo "a person merges. $(pr_url "$PR")"
+        return 0
+        ;;
+      skip-qa)
+        FLOOR_QA_SKIPPED=1
+        FACTORY_SKIP_TICKET_COMMENT=1 "$FACTORY/factory.sh" mem write \
+          --lane qa --status done --harness "$RUNNER" --issue "$ISSUE" ${PR:+--pr "$PR"} \
+          ${OWNER:+--owner "$OWNER"} ${REPO:+--repo "$REPO"} \
+          --summary "QA skipped, no URL." --next-steps "Review the PR" >/dev/null 2>/dev/null || true
+        continue
+        ;;
+      feature|bug|docs|qa|review|ci|telemetry)
+        set +e
+        floor_dispatch "$next"
+        set -e
+        case "$next" in
+          feature|bug|docs)
+            s="$(printf '%s\n' "$(floor_mem)" | latest_lane_status "$next")"
+            case "$s" in
+              blocked|failed) ;;
+              *) floor_capture_pr "$next" ;;
+            esac
+            ;;
+          qa) FLOOR_DID_QA=1 ;;
+          review) FLOOR_DID_REVIEW=1 ;;
+          ci) FLOOR_DID_CI=1 ;;
+          telemetry) FLOOR_DID_TEL=1 ;;
+        esac
+        ;;
+      *)
+        echo "floor: unknown next $next" >&2
+        return 1
+        ;;
+    esac
+  done
+  echo "floor: too many steps" >&2
+  return 1
+}
+
 case "$LANE" in
   mem)
     case "$MEM_CMD" in
@@ -670,16 +887,9 @@ case "$LANE" in
     gh pr checks "$PR" -R "${OWNER}/${REPO}" || true
     exit "$code"
     ;;
-  ship)
-    need_issue
-    "$0" feature --repo "$REPO" --issue "$ISSUE" --owner "$OWNER" --runner "$RUNNER" "${YESFLAG[@]}"
-    if [[ -z "$PR" ]]; then
-      echo "Implement finished. Pass --pr <n> to continue into review+CI."
-      exit 0
-    fi
-    "$0" review --repo "$REPO" --pr "$PR" --owner "$OWNER" --runner "$RUNNER" "${YESFLAG[@]}"
-    "$0" ci --repo "$REPO" --pr "$PR" --owner "$OWNER" --runner "$RUNNER" "${YESFLAG[@]}"
-    echo "Ship lane done. A person merges. $(pr_url "$PR")"
+  floor|ship)
+    floor_run
+    exit $?
     ;;
   lead|tech-lead|cto)
     need_issue
