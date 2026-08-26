@@ -533,7 +533,7 @@ warn_mem() {
 }
 
 ticket_comment() {
-  local body err code url lane="${1:-${RUN_LANE:-$LANE}}"
+  local body err code pr_url lane="${1:-${RUN_LANE:-$LANE}}" owner repo
   case "$lane" in
     feature|docs|qa|review|ci|telemetry) ;;
     *) return 0 ;;
@@ -542,27 +542,30 @@ ticket_comment() {
     done|blocked|failed) ;;
     *) return 0 ;;
   esac
-  [[ -n "${OWNER:-}" && -n "${REPO:-}" ]] || return 0
+  [[ -n "${SUMMARY:-}" ]] || return 0
+  owner="${OWNER:-}"
+  repo="${REPO:-}"
+  if [[ -z "$owner" || -z "$repo" ]] && [[ "${PROJECT:-}" == */* ]]; then
+    owner="${owner:-${PROJECT%%/*}}"
+    repo="${repo:-${PROJECT##*/}}"
+  fi
+  [[ -n "$owner" && -n "$repo" ]] || return 0
   [[ -n "${ISSUE:-}" || -n "${PR:-}" ]] || return 0
   command -v gh >/dev/null 2>&1 || { warn_mem "gh not installed"; return 0; }
-  body="$STATUS"
-  [[ -n "${SUMMARY:-}" ]] && body+=$'\n'"$SUMMARY"
-  if [[ -n "${ISSUE:-}" ]]; then
-    url="https://github.com/${OWNER}/${REPO}/issues/${ISSUE}"
-  else
-    url="https://github.com/${OWNER}/${REPO}/pull/${PR}"
+  body="$SUMMARY"
+  if [[ -n "${PR:-}" ]]; then
+    pr_url="https://github.com/${owner}/${repo}/pull/${PR}"
+  elif [[ "${EVIDENCE:-}" == *'/pull/'* ]]; then
+    pr_url="$(printf '%s' "$EVIDENCE" | grep -oE 'https://github.com/[^"]+/pull/[0-9]+' || true)"
+    pr_url="${pr_url%%$'\n'*}"
   fi
-  body+=$'\n'"$url"
-  if [[ -n "${EVIDENCE:-}" && "$EVIDENCE" != "[]" ]]; then
-    body+=$'\n'"$EVIDENCE"
-  fi
-  [[ -n "${NEXT_STEPS:-}" ]] && body+=$'\n'"$NEXT_STEPS"
+  [[ -n "${pr_url:-}" ]] && body+=$'\n'"$pr_url"
   err="$(mktemp)"
   set +e
   if [[ -n "${ISSUE:-}" ]]; then
-    gh issue comment "$ISSUE" -R "${OWNER}/${REPO}" --body "$body" >/dev/null 2>"$err"
+    gh issue comment "$ISSUE" -R "${owner}/${repo}" --body "$body" >/dev/null 2>"$err"
   else
-    gh pr comment "$PR" -R "${OWNER}/${REPO}" --body "$body" >/dev/null 2>"$err"
+    gh pr comment "$PR" -R "${owner}/${repo}" --body "$body" >/dev/null 2>"$err"
   fi
   code=$?
   set -e
@@ -660,27 +663,23 @@ lane_mem_finish() {
   rm -f "$err"
   rec_status="$(printf '%s\n' "$latest" | latest_lane_status "$lane")"
   case "$rec_status" in
-    blocked|done|failed) ;;
+    blocked|done|failed) return 0 ;;
     *)
       if [[ "$code" -eq 0 ]]; then
         status=done
       else
         status=failed
       fi
-      extra=(--summary "${lane} lane ${status}." --next-steps "Tech lead dispatches the next lane.")
+      extra=(--summary "${lane} lane ${status}.")
       if [[ -n "$OWNER" && -n "$REPO" && -n "$ISSUE" ]]; then
         extra+=(--evidence "https://github.com/${OWNER}/${REPO}/issues/${ISSUE}")
       elif [[ -n "$OWNER" && -n "$REPO" && -n "$PR" ]]; then
         extra+=(--evidence "https://github.com/${OWNER}/${REPO}/pull/${PR}")
       fi
+      unset FACTORY_SKIP_TICKET_COMMENT
       lane_mem_write "$lane" "$status" "${extra[@]}"
-      rec_status="$status"
-      SUMMARY="${lane} lane ${status}."
-      NEXT_STEPS="Tech lead dispatches the next lane."
       ;;
   esac
-  STATUS="$rec_status"
-  ticket_comment "$lane"
 }
 
 run_mem_lane() {
@@ -690,13 +689,12 @@ run_mem_lane() {
   if [[ -n "${MEM_CONTEXT:-}" ]]; then
     prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
   fi
-  export FACTORY_SKIP_TICKET_COMMENT=1
+  unset FACTORY_SKIP_TICKET_COMMENT
   set +e
   run_agent "$dir" "$rules" "$prompt"
   code=$?
   set -e
   lane_mem_finish "$lane" "$code"
-  unset FACTORY_SKIP_TICKET_COMMENT
   return "$code"
 }
 

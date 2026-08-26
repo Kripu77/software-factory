@@ -7,6 +7,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 export FACTORY_MEMORY_DB="$TMP/memory/factory.db"
 unset FACTORY_RUNNER
+unset FACTORY_SKIP_TICKET_COMMENT
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
@@ -97,7 +98,19 @@ cat > "$TMP/bin/gh" << 'EOF'
 #!/usr/bin/env bash
 dump="${FAKE_DUMP:?}"
 printf '%s\n' "$*" >> "$dump/gh"
-if [[ "${GH_FAIL:-}" == 1 && "$1" == "issue" && "$2" == "comment" ]]; then
+cmd1="${1:-}"
+cmd2="${2:-}"
+body=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --body) body="${2:-}"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+if [[ -n "$body" ]]; then
+  printf '%s\n' "$body" > "$dump/comment-body"
+fi
+if [[ "${GH_FAIL:-}" == 1 && "$cmd1" == "issue" && "$cmd2" == "comment" ]]; then
   echo "comment failed" >&2
   exit 1
 fi
@@ -125,28 +138,60 @@ gh_count() {
   fi
 }
 
+last_comment() {
+  if [[ -f "$DUMP/comment-body" ]]; then
+    cat "$DUMP/comment-body"
+  fi
+}
+
+assert_news_body() {
+  local body line
+  body="$(last_comment)"
+  [[ -n "$body" ]] || fail "comment body empty"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    case "$line" in
+      done|blocked|failed) fail "comment has status word: $body" ;;
+    esac
+    case "$line" in
+      *'/issues/'*) fail "comment has issue self-link: $body" ;;
+    esac
+    case "$line" in
+      '['*) fail "comment has JSON evidence: $body" ;;
+    esac
+    case "$line" in
+      *'Tech lead dispatches'*|*'A person merges'*) fail "comment has factory liturgy: $body" ;;
+    esac
+  done <<< "$body"
+}
+
 # started does not comment
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
 run_env "$FACTORY" mem write --lane feature --status started --harness grok --issue 6 --owner acme --repo widgets --project acme/widgets --summary "Start feature" >/dev/null
 [[ "$(gh_count)" == "0" ]] || fail "started must not comment: $(cat "$DUMP/gh")"
 
-# Terminal done comments once
+# Terminal done comments once: summary plus PR URL, nothing else
 run_env "$FACTORY" mem write --lane feature --status done --harness grok --issue 6 --owner acme --repo widgets --project acme/widgets --summary "Shipped the list" --evidence "https://github.com/acme/widgets/pull/40" --next-steps "Review the PR" >/dev/null
 [[ "$(gh_count)" == "1" ]] || fail "done should comment once, got $(gh_count): $(cat "$DUMP/gh")"
 grep -q "issue comment 6" "$DUMP/gh" || fail "done should gh issue comment: $(cat "$DUMP/gh")"
-grep -q "Shipped the list" "$DUMP/gh" || fail "comment missing summary: $(cat "$DUMP/gh")"
-grep -q "Review the PR" "$DUMP/gh" || fail "comment missing next: $(cat "$DUMP/gh")"
+assert_news_body
+want=$'Shipped the list\nhttps://github.com/acme/widgets/pull/40'
+got="$(last_comment)"
+[[ "$got" == "$want" ]] || fail "comment body want $(printf %q "$want") got $(printf %q "$got")"
 
 # Bug writes do not comment
-rm -f "$DUMP/gh"
+rm -f "$DUMP/gh" "$DUMP/comment-body"
 run_env "$FACTORY" mem write --lane bug --status done --harness grok --issue 6 --owner acme --repo widgets --project acme/widgets --summary "Fixed it" --evidence "https://github.com/acme/widgets/issues/6" >/dev/null
 [[ "$(gh_count)" == "0" ]] || fail "bug must not comment: $(cat "$DUMP/gh")"
 
 # Review comments on the PR
-rm -f "$DUMP/gh"
+rm -f "$DUMP/gh" "$DUMP/comment-body"
 run_env "$FACTORY" mem write --lane review --status done --harness grok --pr 40 --owner acme --repo widgets --project acme/widgets --summary "Left review comments" --evidence "https://github.com/acme/widgets/pull/40" --next-steps "CI" >/dev/null
 grep -q "pr comment 40" "$DUMP/gh" || fail "review should gh pr comment: $(cat "$DUMP/gh")"
+assert_news_body
+want=$'Left review comments\nhttps://github.com/acme/widgets/pull/40'
+got="$(last_comment)"
+[[ "$got" == "$want" ]] || fail "review comment body want $(printf %q "$want") got $(printf %q "$got")"
 
 # Missing DB: feature still runs, finish writes done and comments
 rm -rf "$DUMP" "$TMP/memory"
@@ -180,6 +225,8 @@ count="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT COUNT(*) FROM runs WHERE lane = 'f
 [[ "$status" == "blocked" ]] || fail "blocked should stick, got $status"
 [[ "$count" == "1" ]] || fail "started then blocked should be one row, count=$count"
 [[ "$(gh_count)" == "1" ]] || fail "blocked should comment once, got $(gh_count): $(cat "$DUMP/gh" 2>/dev/null || true)"
+assert_news_body
+[[ "$(last_comment)" == "Need a human" ]] || fail "blocked comment should be the summary, got $(last_comment)"
 
 # Agent done without --owner still comments once from finish
 rm -rf "$DUMP" "$TMP/memory"
@@ -188,6 +235,7 @@ AGENT_LANE=feature AGENT_ISSUE=6 AGENT_MEM_STATUS=done AGENT_NO_OWNER=1 AGENT_SU
   run_feature >"$TMP/nout" 2>"$TMP/nerr"
 [[ "$(gh_count)" == "1" ]] || fail "finish should comment when agent omitted owner, got $(gh_count): $(cat "$DUMP/gh" 2>/dev/null || true)"
 grep -q "issue comment 6" "$DUMP/gh" || fail "finish comment should be issue comment: $(cat "$DUMP/gh")"
+assert_news_body
 
 # factory.sh review writes memory and comments on the PR
 rm -rf "$DUMP" "$TMP/memory"
@@ -218,5 +266,30 @@ run_env "$FACTORY" telemetry --question "where does signup die" --repo widgets >
 tstatus="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT status FROM runs WHERE lane = 'telemetry' ORDER BY id DESC LIMIT 1;")"
 [[ "$tstatus" == "done" ]] || fail "telemetry should finish done, got $tstatus"
 [[ "$(gh_count)" == "0" ]] || fail "telemetry without issue must not comment: $(cat "$DUMP/gh" 2>/dev/null || true)"
+
+# Empty summary: no comment
+rm -rf "$DUMP" "$TMP/memory"
+mkdir -p "$DUMP"
+run_env "$FACTORY" mem write --lane feature --status done --harness grok --issue 6 --owner acme --repo widgets --project acme/widgets >/dev/null
+[[ "$(gh_count)" == "0" ]] || fail "empty summary must not comment: $(cat "$DUMP/gh")"
+
+# Wrapper does not comment again after the lane already wrote a terminal status
+rm -rf "$DUMP" "$TMP/memory"
+mkdir -p "$DUMP"
+AGENT_LANE=feature AGENT_ISSUE=6 AGENT_MEM_STATUS=done AGENT_SUMMARY="Shipped the list" \
+  AGENT_EVIDENCE="https://github.com/acme/widgets/pull/40" AGENT_NEXT="Tech lead dispatches the next lane" \
+  run_feature >"$TMP/wout" 2>"$TMP/werr"
+[[ "$(gh_count)" == "1" ]] || fail "agent finish should comment once, got $(gh_count): $(cat "$DUMP/gh" 2>/dev/null || true)"
+assert_news_body
+want=$'Shipped the list\nhttps://github.com/acme/widgets/pull/40'
+got="$(last_comment)"
+[[ "$got" == "$want" ]] || fail "wrapper must not replace the agent comment, want $(printf %q "$want") got $(printf %q "$got")"
+
+# Default --next-steps is not dispatch or merge liturgy
+grep -q "Tech lead dispatches the next lane" "$ROOT/factory.sh" && fail "default --next-steps still says Tech lead dispatches"
+grep -n -- "--next-steps" "$ROOT/factory.sh" | grep -q "A person merges" && fail "default --next-steps still says A person merges"
+
+# README public ledger is the comment, not status-plus-next-steps
+grep -q "status, URL, evidence, what next" "$ROOT/README.md" && fail "README still describes status-plus-next-steps as the ledger"
 
 echo "ok lanes"

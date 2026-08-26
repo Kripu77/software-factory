@@ -7,6 +7,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 export FACTORY_MEMORY_DB="$TMP/memory/factory.db"
 unset FACTORY_RUNNER
+unset FACTORY_SKIP_TICKET_COMMENT
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
