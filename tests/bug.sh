@@ -7,6 +7,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 export FACTORY_MEMORY_DB="$TMP/memory/factory.db"
 unset FACTORY_RUNNER
+unset FACTORY_SKIP_TICKET_COMMENT
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
@@ -140,7 +141,6 @@ warns="$(grep -c "factory.db\|factory memory" "$TMP/err" || true)"
 [[ ! -s "$DUMP/status-at-start" ]] || fail "wrapper should not write started before the runner: $(cat "$DUMP/status-at-start")"
 [[ -n "$(field_for summary)" ]] || fail "terminal done missing summary"
 [[ "$(field_for evidence)" != "[]" ]] || fail "terminal done missing evidence"
-[[ -n "$(field_for next_steps)" ]] || fail "terminal done missing next_steps"
 
 # Second run sees the first in context
 rm -rf "$DUMP"

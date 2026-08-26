@@ -7,6 +7,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 export FACTORY_MEMORY_DB="$TMP/memory/factory.db"
 unset FACTORY_RUNNER
+unset FACTORY_SKIP_TICKET_COMMENT
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
@@ -92,7 +93,9 @@ grep -q "pull/40" "$TMP/out" || fail "merge line should include PR URL: $(cat "$
 pr="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT pr FROM runs WHERE issue = '12' AND lane = 'feature' ORDER BY id DESC LIMIT 1;")"
 [[ "$pr" == "40" ]] || fail "memory should have pr=40 after feature, got $pr"
 fcount="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT COUNT(*) FROM runs WHERE issue = '12' AND lane = 'feature';")"
-[[ "$fcount" == "1" ]] || fail "pr should land on the feature run, not a second row, count=$fcount"
+[[ "$fcount" == "2" ]] || fail "no-started capture should insert, count=$fcount"
+first="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT IFNULL(pr,'') FROM runs WHERE issue = '12' AND lane = 'feature' ORDER BY id ASC LIMIT 1;")"
+[[ "$first" == "" ]] || fail "first feature finish should keep empty pr, got $first"
 
 # Blocked implement stops. No review or CI.
 rm -rf "$DUMP" "$TMP/memory"

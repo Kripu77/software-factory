@@ -320,6 +320,8 @@ detect_project() {
     fi
   fi
   project_from_remote "$PROJECT"
+  OWNER="${PROJECT%%/*}"
+  REPO="${PROJECT##*/}"
 }
 
 looks_like_secret() {
@@ -361,6 +363,18 @@ validate_next_steps() {
   [[ "$NEXT_STEPS" != *$'\n'* && "$NEXT_STEPS" != *$'\r'* ]] || { echo "Need one-line --next-steps" >&2; exit 1; }
 }
 
+lift_pr_from_item() {
+  local item="$1" rest n
+  [[ -z "${PR:-}" ]] || return 0
+  case "$item" in
+    https://github.com/*/*/pull/[0-9]*)
+      rest="${item##*/pull/}"
+      n="${rest%%[!0-9]*}"
+      [[ "$n" =~ ^[0-9]+$ ]] && PR="$n"
+      ;;
+  esac
+}
+
 validate_evidence_items() {
   local remain="$1"
   local item
@@ -376,6 +390,7 @@ validate_evidence_items() {
     remain="${remain#*\"}"
     looks_like_secret "$item" && { echo "Refusing secret in mem write" >&2; exit 1; }
     is_url_or_path "$item" || { echo "Need --evidence URL or path" >&2; exit 1; }
+    lift_pr_from_item "$item"
     remain="${remain#"${remain%%[![:space:]]*}"}"
     if [[ "$remain" == ,* ]]; then
       remain="${remain#,}"
@@ -403,6 +418,7 @@ normalize_evidence() {
     return
   fi
   is_url_or_path "$EVIDENCE" || { echo "Need --evidence URL or path" >&2; exit 1; }
+  lift_pr_from_item "$EVIDENCE"
   EVIDENCE="[$(json_quote "$EVIDENCE")]"
 }
 
@@ -481,20 +497,7 @@ WHERE id = (
   WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE") AND status = 'started'
   ORDER BY started_at_epoch DESC, id DESC
   LIMIT 1
-);"
-    if [[ -n "$PR" ]]; then
-      sql+="
-UPDATE runs SET pr = $(sql_quote "$PR")
-WHERE changes() = 0 AND (pr IS NULL OR pr = '') AND id = (
-  SELECT id FROM (
-    SELECT id FROM runs
-    WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE")
-    ORDER BY started_at_epoch DESC, id DESC
-    LIMIT 1
-  )
-);"
-    fi
-    sql+="
+);
 INSERT INTO runs (harness, lane, project, issue, pr, status, summary, next_steps, evidence, started_at, started_at_epoch, completed_at, completed_at_epoch)
 SELECT $(sql_quote "$HARNESS"), $(sql_quote "$RUN_LANE"), $(sql_quote "$PROJECT"), $(sql_nullable "$ISSUE"), $(sql_nullable "$PR"), $(sql_quote "$STATUS"), $(sql_nullable "$SUMMARY"), $(sql_nullable "$NEXT_STEPS"), $(sql_quote "$EVIDENCE"), $(sql_quote "$now"), $epoch, $(sql_quote "$now"), $epoch
 WHERE changes() = 0;
@@ -533,7 +536,7 @@ warn_mem() {
 }
 
 ticket_comment() {
-  local body err code url lane="${1:-${RUN_LANE:-$LANE}}"
+  local body err code lane="${1:-${RUN_LANE:-$LANE}}"
   case "$lane" in
     feature|docs|qa|review|ci|telemetry) ;;
     *) return 0 ;;
@@ -542,21 +545,14 @@ ticket_comment() {
     done|blocked|failed) ;;
     *) return 0 ;;
   esac
+  [[ -n "${SUMMARY:-}" ]] || return 0
   [[ -n "${OWNER:-}" && -n "${REPO:-}" ]] || return 0
   [[ -n "${ISSUE:-}" || -n "${PR:-}" ]] || return 0
   command -v gh >/dev/null 2>&1 || { warn_mem "gh not installed"; return 0; }
-  body="$STATUS"
-  [[ -n "${SUMMARY:-}" ]] && body+=$'\n'"$SUMMARY"
-  if [[ -n "${ISSUE:-}" ]]; then
-    url="https://github.com/${OWNER}/${REPO}/issues/${ISSUE}"
-  else
-    url="https://github.com/${OWNER}/${REPO}/pull/${PR}"
+  body="$SUMMARY"
+  if [[ -n "${PR:-}" ]]; then
+    body+=$'\n\n'"[PR ${PR}]($(pr_url "$PR"))"
   fi
-  body+=$'\n'"$url"
-  if [[ -n "${EVIDENCE:-}" && "$EVIDENCE" != "[]" ]]; then
-    body+=$'\n'"$EVIDENCE"
-  fi
-  [[ -n "${NEXT_STEPS:-}" ]] && body+=$'\n'"$NEXT_STEPS"
   err="$(mktemp)"
   set +e
   if [[ -n "${ISSUE:-}" ]]; then
@@ -660,27 +656,22 @@ lane_mem_finish() {
   rm -f "$err"
   rec_status="$(printf '%s\n' "$latest" | latest_lane_status "$lane")"
   case "$rec_status" in
-    blocked|done|failed) ;;
+    blocked|done|failed) return 0 ;;
     *)
       if [[ "$code" -eq 0 ]]; then
         status=done
       else
         status=failed
       fi
-      extra=(--summary "${lane} lane ${status}." --next-steps "Tech lead dispatches the next lane.")
+      extra=(--summary "${lane} lane ${status}.")
       if [[ -n "$OWNER" && -n "$REPO" && -n "$ISSUE" ]]; then
         extra+=(--evidence "https://github.com/${OWNER}/${REPO}/issues/${ISSUE}")
       elif [[ -n "$OWNER" && -n "$REPO" && -n "$PR" ]]; then
         extra+=(--evidence "https://github.com/${OWNER}/${REPO}/pull/${PR}")
       fi
       lane_mem_write "$lane" "$status" "${extra[@]}"
-      rec_status="$status"
-      SUMMARY="${lane} lane ${status}."
-      NEXT_STEPS="Tech lead dispatches the next lane."
       ;;
   esac
-  STATUS="$rec_status"
-  ticket_comment "$lane"
 }
 
 run_mem_lane() {
@@ -690,13 +681,12 @@ run_mem_lane() {
   if [[ -n "${MEM_CONTEXT:-}" ]]; then
     prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
   fi
-  export FACTORY_SKIP_TICKET_COMMENT=1
+  unset FACTORY_SKIP_TICKET_COMMENT
   set +e
   run_agent "$dir" "$rules" "$prompt"
   code=$?
   set -e
   lane_mem_finish "$lane" "$code"
-  unset FACTORY_SKIP_TICKET_COMMENT
   return "$code"
 }
 
