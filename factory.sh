@@ -18,6 +18,7 @@ Usage:
   factory.sh qa               --url <app>
   factory.sh mem read         [--issue <n>] [--pr <n>] [--project owner/name] [--limit n]
   factory.sh mem write        --lane <lane> --status started|done|blocked|failed [--harness claude|codex|cursor|grok] [--issue <n>] [--pr <n>] [--project owner/name] [--summary s] [--next-steps s] [--evidence url-or-json]
+  factory.sh close-linked     --pr <n> [--repo name] [--owner org]
 
 Never merges. A person merges.
 Workspace defaults to this directory. Owner and repo default from git remote origin. FACTORY_RUNNER if more than one of claude, codex, grok is on PATH.
@@ -112,7 +113,6 @@ else
       *) echo "Unknown arg: $1" >&2; usage ;;
     esac
   done
-  detect_runner
 fi
 
 infer_github() {
@@ -132,6 +132,19 @@ need_owner() { [[ -n "$OWNER" ]] || { echo "Need --owner, FACTORY_OWNER, or a gi
 need_issue() { [[ -n "$ISSUE" ]] || { echo "Need --issue <n>" >&2; exit 1; }; }
 need_pr() { [[ -n "$PR" ]] || { echo "Need --pr <n>" >&2; exit 1; }; }
 need_question() { [[ -n "$QUESTION" ]] || { echo "Need --question" >&2; exit 1; }; }
+need_repo() { [[ -n "$REPO" ]] || { echo "Need --repo <name>" >&2; exit 1; }; }
+
+close_linked_issues() {
+  need_pr
+  need_owner
+  need_repo
+  command -v gh >/dev/null 2>&1 || { echo "gh not installed" >&2; exit 1; }
+  local num
+  while IFS= read -r num; do
+    [[ "$num" =~ ^[0-9]+$ ]] || continue
+    gh issue close "$num" -R "${OWNER}/${REPO}"
+  done <<< "$(gh pr view "$PR" -R "${OWNER}/${REPO}" --json mergedAt,baseRefName,closingIssuesReferences --template '{{if .mergedAt}}{{if eq .baseRefName "main"}}{{range .closingIssuesReferences}}{{.number}}{{"\n"}}{{end}}{{end}}{{end}}')"
+}
 
 record_harness() {
   case "${RUNNER:-}" in
@@ -159,6 +172,7 @@ run_agent() {
   local cwd="$1"
   local rules="$2"
   local prompt="$3"
+  detect_runner
   case "$RUNNER" in
     grok)
       local extra=(--no-auto-update --no-alt-screen)
@@ -676,6 +690,7 @@ lane_mem_finish() {
 
 run_mem_lane() {
   local lane="$1" dir="$2" rules="$3" prompt="$4" code
+  detect_runner
   mem_read_context
   prompt+=$'\n'"Memory writes: factory.sh mem write --lane $lane --harness $RUNNER ${ISSUE:+--issue $ISSUE }${PR:+--pr $PR }--summary '<one sentence>' --evidence <url-or-path> --next-steps '<next>'."
   if [[ -n "${MEM_CONTEXT:-}" ]]; then
@@ -846,6 +861,7 @@ floor_run() {
   need_issue
   [[ -n "$REPO" ]] || { echo "Need --repo <name>" >&2; exit 1; }
   need_owner
+  detect_runner
   for i in 1 2 3 4 5 6 7 8; do
     pr="$(floor_pr_from_mem)"
     [[ -n "$pr" ]] || pr="$(floor_pr_from_gh)"
@@ -912,6 +928,9 @@ case "$LANE" in
       write) mem_write ;;
       *) usage ;;
     esac
+    ;;
+  close-linked)
+    close_linked_issues
     ;;
   feature|bug|docs)
     need_issue

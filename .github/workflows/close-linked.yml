@@ -1,0 +1,21 @@
+name: Close linked issues
+
+on:
+  pull_request:
+    types:
+      - closed
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  close:
+    if: github.event.pull_request.merged && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: ./factory.sh close-linked --pr ${{ github.event.pull_request.number }} --owner ${{ github.repository_owner }} --repo ${{ github.event.repository.name }}
+        env:
+          GH_TOKEN: ${{ github.token }}
