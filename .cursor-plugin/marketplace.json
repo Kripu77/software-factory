@@ -1,0 +1,16 @@
+{
+  "name": "software-factory",
+  "owner": {
+    "name": "Kripu Khadka"
+  },
+  "metadata": {
+    "description": "Lanes, tickets, and a human merge."
+  },
+  "plugins": [
+    {
+      "name": "software-factory",
+      "source": "./",
+      "description": "Lanes, tickets, and a human merge. Skills and commands for Cursor, Claude, Grok, and Codex."
+    }
+  ]
+}

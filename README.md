@@ -48,13 +48,45 @@ Floor asks GitHub whether there is a PR, a review, and green checks. It asks loc
 
 ## Install
 
+Add this GitHub repo as a marketplace and install software-factory at the Release tag. Not main.
+
+Claude Code:
+
+```
+/plugin marketplace add Kripu77/software-factory@v1.0.0
+/plugin install software-factory@software-factory
+```
+
+Grok Build:
+
+```
+grok plugin install Kripu77/software-factory@v1.0.0 --trust
+```
+
+Or add this repo as a marketplace at tag `v1.0.0`, then install software-factory.
+
+Codex:
+
+```
+codex plugin marketplace add Kripu77/software-factory@v1.0.0
+codex plugin add software-factory@software-factory
+```
+
+Cursor:
+
+Add GitHub marketplace `Kripu77/software-factory` at tag `v1.0.0`, then install software-factory.
+
+`/lead` loads. So do the other factory commands. Codex gets the skills.
+
+Clone plus `./install.sh` is the from-source path:
+
 ```bash
 git clone https://github.com/Kripu77/software-factory.git
 cd software-factory
 ./install.sh
 ```
 
-Clone plus `./install.sh` is the from-source path. That creates `~/.factory/memory`, installs the plugin, and puts `factory` on `~/.local/bin`. Codex: `./install.sh /path/to/your-checkout` also writes `AGENTS.md` there. Then:
+That creates `~/.factory/memory`, installs the plugin, and puts `factory` on `~/.local/bin`. Codex: `./install.sh /path/to/your-checkout` also writes `AGENTS.md` there. Then:
 
 ```bash
 cd /path/to/your-checkout
@@ -62,7 +94,7 @@ grok          # or claude
 /lead
 ```
 
-The versioned pack is on GitHub Releases. Set plugin versions in `.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, and `.grok-plugin/plugin.json` to the tag without the `v`, then:
+The versioned pack is on GitHub Releases. Set plugin versions in `.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, `.grok-plugin/plugin.json`, and `.codex-plugin/plugin.json` to the tag without the `v`, then:
 
 ```bash
 git tag v1.0.0
@@ -75,10 +107,10 @@ Owner and repo come from `git remote`. Workspace is this directory. Put `~/.loca
 
 | Harness | How it loads |
 | --- | --- |
-| Cursor | local plugin at `~/.cursor/plugins/local/software-factory` |
-| Claude Code | skills + slash commands under `~/.claude` |
-| Grok Build | plugin at `~/.grok/plugins/software-factory` (`grok plugin install . --trust`) |
-| Codex | skills under `~/.codex/skills` plus `AGENTS.md` in the product checkout |
+| Cursor | GitHub marketplace at the Release tag, or local plugin at `~/.cursor/plugins/local/software-factory` |
+| Claude Code | marketplace plugin at the Release tag, or skills + slash commands under `~/.claude` |
+| Grok Build | GitHub shorthand at the Release tag, or `grok plugin install . --trust` from a clone |
+| Codex | marketplace plugin at the Release tag, or skills under `~/.codex/skills` plus `AGENTS.md` |
 
 ## Run
 
