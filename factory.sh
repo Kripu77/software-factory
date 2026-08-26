@@ -18,6 +18,7 @@ Usage:
   factory.sh qa               --url <app>
   factory.sh mem read         [--issue <n>] [--pr <n>] [--project owner/name] [--limit n]
   factory.sh mem write        --lane <lane> --status started|done|blocked|failed [--harness claude|codex|cursor|grok] [--issue <n>] [--pr <n>] [--project owner/name] [--summary s] [--next-steps s] [--evidence url-or-json]
+  factory.sh close-linked     --pr <n> [--repo name] [--owner org]
 
 Never merges. A person merges.
 Workspace defaults to this directory. Owner and repo default from git remote origin. FACTORY_RUNNER if more than one of claude, codex, grok is on PATH.
@@ -112,7 +113,9 @@ else
       *) echo "Unknown arg: $1" >&2; usage ;;
     esac
   done
-  detect_runner
+  if [[ "$LANE" != "close-linked" ]]; then
+    detect_runner
+  fi
 fi
 
 infer_github() {
@@ -132,6 +135,23 @@ need_owner() { [[ -n "$OWNER" ]] || { echo "Need --owner, FACTORY_OWNER, or a gi
 need_issue() { [[ -n "$ISSUE" ]] || { echo "Need --issue <n>" >&2; exit 1; }; }
 need_pr() { [[ -n "$PR" ]] || { echo "Need --pr <n>" >&2; exit 1; }; }
 need_question() { [[ -n "$QUESTION" ]] || { echo "Need --question" >&2; exit 1; }; }
+need_repo() { [[ -n "$REPO" ]] || { echo "Need --repo <name>" >&2; exit 1; }; }
+
+close_linked_issues() {
+  need_pr
+  need_owner
+  need_repo
+  command -v gh >/dev/null 2>&1 || { echo "gh not installed" >&2; exit 1; }
+  local info state base num
+  info="$(gh pr view "$PR" -R "${OWNER}/${REPO}" --json mergedAt,baseRefName,closingIssuesReferences --template '{{if .mergedAt}}merged{{else}}unmerged{{end}} {{.baseRefName}}{{"\n"}}{{range .closingIssuesReferences}}{{.number}}{{"\n"}}{{end}}')"
+  read -r state base <<<"${info%%$'\n'*}"
+  [[ "$state" == "merged" ]] || return 0
+  [[ "$base" == "main" ]] || return 0
+  while IFS= read -r num; do
+    [[ "$num" =~ ^[0-9]+$ ]] || continue
+    gh issue close "$num" -R "${OWNER}/${REPO}"
+  done <<< "${info#*$'\n'}"
+}
 
 record_harness() {
   case "${RUNNER:-}" in
@@ -912,6 +932,9 @@ case "$LANE" in
       write) mem_write ;;
       *) usage ;;
     esac
+    ;;
+  close-linked)
+    close_linked_issues
     ;;
   feature|bug|docs)
     need_issue
