@@ -1,0 +1,17 @@
+{
+  "name": "software-factory",
+  "description": "Lanes, tickets, and a human merge.",
+  "owner": {
+    "name": "Kripu Khadka"
+  },
+  "plugins": [
+    {
+      "name": "software-factory",
+      "description": "Lanes, tickets, and a human merge. Skills and slash commands for Grok Build.",
+      "category": "development",
+      "version": "1.0.0",
+      "source": "./",
+      "homepage": "https://github.com/Kripu77/software-factory"
+    }
+  ]
+}

@@ -22,10 +22,11 @@ write_plugin() {
 
 pack_plugins() {
   local dest="$1" version="$2"
-  mkdir -p "$dest/.claude-plugin" "$dest/.cursor-plugin" "$dest/.grok-plugin"
+  mkdir -p "$dest/.claude-plugin" "$dest/.cursor-plugin" "$dest/.grok-plugin" "$dest/.codex-plugin"
   write_plugin "$dest/.claude-plugin/plugin.json" "$version"
   write_plugin "$dest/.cursor-plugin/plugin.json" "$version"
   write_plugin "$dest/.grok-plugin/plugin.json" "$version"
+  write_plugin "$dest/.codex-plugin/plugin.json" "$version"
 }
 
 fx="$TMP/pack"

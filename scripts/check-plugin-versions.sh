@@ -10,7 +10,7 @@ plugin_version() {
   python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$1"
 }
 
-for f in .claude-plugin/plugin.json .cursor-plugin/plugin.json .grok-plugin/plugin.json; do
+for f in .claude-plugin/plugin.json .cursor-plugin/plugin.json .grok-plugin/plugin.json .codex-plugin/plugin.json; do
   path="$root/$f"
   [[ -f "$path" ]] || { echo "missing $f" >&2; exit 1; }
   got="$(plugin_version "$path")"
