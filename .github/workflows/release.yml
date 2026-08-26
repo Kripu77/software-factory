@@ -17,3 +17,6 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" --generate-notes --notes "Software factory ${GITHUB_REF_NAME}."
+      - env:
+          XAI_MARKETPLACE_TOKEN: ${{ secrets.XAI_MARKETPLACE_TOKEN }}
+        run: bash scripts/ship-grok-catalog.sh "$GITHUB_REF_NAME" "$(git rev-parse HEAD)"

@@ -101,7 +101,7 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-A person creates the tag. A push to main does not cut a Release.
+Tag and push. A push to main does not cut a Release.
 
 Owner and repo come from `git remote`. Workspace is this directory. Put `~/.local/bin` on PATH if `factory` is missing. Two of claude, codex, grok on PATH: set `FACTORY_RUNNER`.
 
