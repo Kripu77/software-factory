@@ -1,70 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1193" height="1152" viewBox="-150.1 -50.3 1193.3 1152.3" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" width="1193" height="1380" viewBox="-160 -50 1220 1400" role="img">
 <title>Software factory</title>
-<rect x="-150.1" y="-50.3" width="1193.3" height="1152.3" fill="#ffffff"/>
-<defs><marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1e1e1e"/></marker></defs>
-<style>text{font-family:Virgil,Segoe Print,Comic Sans MS,cursive,ui-sans-serif,system-ui,sans-serif;fill:#1e1e1e} .muted{fill:#868e96}</style>
-<rect x="80.0" y="23.8" width="920.0" height="96.0" rx="16" fill="none" stroke="#868e96" stroke-width="1.5" stroke-dasharray="8 6"/>
-<rect x="110.0" y="49.8" width="190.0" height="52.0" rx="16" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
-<rect x="322.0" y="49.8" width="190.0" height="52.0" rx="16" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
-<rect x="534.0" y="49.8" width="190.0" height="52.0" rx="16" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
-<rect x="746.0" y="49.8" width="190.0" height="52.0" rx="16" fill="#d0bfff" stroke="#1e1e1e" stroke-width="1.5"/>
-<ellipse cx="536.1" cy="236.4" rx="120.0" ry="35.0" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
-<rect x="370.8" y="307.5" width="340.0" height="82.0" rx="16" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
-<rect x="-106.9" y="428.4" width="300.0" height="252.0" rx="16" fill="#e9ecef" stroke="#1e1e1e" stroke-width="1.5"/>
-<rect x="-88.9" y="496.4" width="124.0" height="58.0" rx="16" fill="#99e9f2" stroke="#1e1e1e" stroke-width="1.5"/>
-<rect x="47.1" y="496.4" width="124.0" height="58.0" rx="16" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
-<rect x="-88.9" y="568.4" width="124.0" height="58.0" rx="16" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
-<rect x="47.1" y="568.4" width="124.0" height="58.0" rx="16" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
-<rect x="420.3" y="454.5" width="240.0" height="68.0" rx="16" fill="#d0bfff" stroke="#1e1e1e" stroke-width="1.5"/>
-<rect x="372.8" y="596.0" width="150.0" height="68.0" rx="16" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="1.5"/>
-<rect x="532.8" y="596.0" width="160.0" height="68.0" rx="16" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
-<rect x="712.8" y="596.0" width="150.0" height="68.0" rx="16" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
-<rect x="463.5" y="730.0" width="250.0" height="68.0" rx="16" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
-<rect x="463.7" y="844.8" width="250.0" height="68.0" rx="16" fill="#99e9f2" stroke="#1e1e1e" stroke-width="1.5"/>
-<ellipse cx="595.2" cy="1024.1" rx="175.0" ry="38.0" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
-<path d="M538.4 125.5 L536.3 195.6" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
-<path d="M540.8 273.5 L540.8 307.5" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
-<path d="M540.7 395.3 L540.5 448.8" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
-<path d="M538.5 520.0 L455.2 590.3" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
-<path d="M541.2 519.5 L606.0 590.3" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
-<path d="M627.4 528.3 L781.0 590.3" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
-<path d="M198.8 556.9 L367.1 627.6" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
-<path d="M424.4 669.8 L457.8 750.2" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
-<path d="M610.1 669.8 L591.3 724.3" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
-<path d="M808.3 669.8 L719.3 765.8" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
-<path d="M589.1 803.8 L589.8 848.0" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
-<path d="M591.1 918.5 L594.9 980.3" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
-<path d="M193.1 524.2 L532.8 630.0" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
-<text class="muted" x="543.2" y="4.1" text-anchor="middle" font-size="14">runner is a plug  ·  grok · claude · codex · cursor</text>
-<text x="205.0" y="82.8" text-anchor="middle" font-size="20" font-weight="600">Grok</text>
-<text x="417.0" y="82.8" text-anchor="middle" font-size="20" font-weight="600">Claude</text>
-<text x="629.0" y="82.8" text-anchor="middle" font-size="20" font-weight="600">Codex</text>
-<text x="841.0" y="82.8" text-anchor="middle" font-size="20" font-weight="600">Cursor</text>
-<text x="536.1" y="234.1" text-anchor="middle" font-size="22" font-weight="600">human</text>
-<text class="muted" x="536.1" y="250.9" text-anchor="middle" font-size="13" font-weight="400">classify the work</text>
-<text x="540.8" y="345.3" text-anchor="middle" font-size="22" font-weight="600">Tech lead</text>
-<text class="muted" x="540.8" y="365.3" text-anchor="middle" font-size="13" font-weight="400">quiz · ticket · dispatch · never implement</text>
-<text x="43.1" y="455.2" text-anchor="middle" font-size="20">Telemetry</text>
-<text class="muted" x="39.9" y="478.7" text-anchor="middle" font-size="13">errors · funnels · feature perf</text>
-<text x="-26.9" y="530.3" text-anchor="middle" font-size="14" font-weight="600">PostHog</text>
-<text x="109.1" y="530.3" text-anchor="middle" font-size="14" font-weight="600">Datadog</text>
-<text x="-26.9" y="602.3" text-anchor="middle" font-size="14" font-weight="600">App Insights</text>
-<text x="109.1" y="602.3" text-anchor="middle" font-size="14" font-weight="600">CloudWatch</text>
-<text x="540.3" y="486.1" text-anchor="middle" font-size="20" font-weight="600">tickets</text>
-<text class="muted" x="540.3" y="502.7" text-anchor="middle" font-size="13" font-weight="400">owning repo  ·  ready-for-agent</text>
-<text x="447.8" y="627.3" text-anchor="middle" font-size="18" font-weight="600">Bug</text>
-<text class="muted" x="447.8" y="644.2" text-anchor="middle" font-size="13" font-weight="400">reproduce → TDD</text>
-<text x="612.8" y="627.3" text-anchor="middle" font-size="18" font-weight="600">Feature</text>
-<text class="muted" x="612.8" y="644.2" text-anchor="middle" font-size="13" font-weight="400">do not expand</text>
-<text x="787.8" y="627.3" text-anchor="middle" font-size="18" font-weight="600">Docs</text>
-<text class="muted" x="787.8" y="644.2" text-anchor="middle" font-size="13" font-weight="400">docs only</text>
-<text x="588.5" y="761.6" text-anchor="middle" font-size="20" font-weight="600">Review</text>
-<text class="muted" x="588.5" y="778.2" text-anchor="middle" font-size="13" font-weight="400">harsh  ·  comments, not patches</text>
-<text x="588.7" y="876.3" text-anchor="middle" font-size="20" font-weight="600">CI</text>
-<text class="muted" x="588.7" y="892.9" text-anchor="middle" font-size="13" font-weight="400">gh pr checks until green</text>
-<text x="595.2" y="1021.3" text-anchor="middle" font-size="22" font-weight="600">human merges</text>
-<text class="muted" x="595.2" y="1039.7" text-anchor="middle" font-size="13" font-weight="400">agents never merge</text>
-<text class="muted" x="273.8" y="551.7" text-anchor="middle" font-size="13">errors</text>
-<text class="muted" x="363.0" y="569.9" text-anchor="middle" font-size="13">funnels · perf</text>
+<rect x="-160" y="-50" width="1220" height="1400" fill="#fffdf8"/>
+<defs>
+  <marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <path d="M0 0 L10 5 L0 10 z" fill="#1e1e1e"/>
+  </marker>
+  <marker id="md" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <path d="M0 0 L10 5 L0 10 z" fill="#868e96"/>
+  </marker>
+</defs>
+<style>
+  text{font-family:Virgil,Segoe Print,Comic Sans MS,cursive,ui-sans-serif,system-ui,sans-serif;fill:#1e1e1e}
+  .muted{fill:#868e96}
+</style>
+<rect x="80" y="24" width="920" height="96" rx="16" fill="none" stroke="#868e96" stroke-width="1.5" stroke-dasharray="8 6"/>
+<text class="muted" x="540" y="10" text-anchor="middle" font-size="14">runner is a plug  ·  workers on PATH  ·  Cursor is a slash door</text>
+<rect x="110" y="50" width="190" height="52" rx="16" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="205" y="83" text-anchor="middle" font-size="20" font-weight="600">Grok</text>
+<rect x="322" y="50" width="190" height="52" rx="16" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="417" y="83" text-anchor="middle" font-size="20" font-weight="600">Claude</text>
+<rect x="534" y="50" width="190" height="52" rx="16" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="629" y="83" text-anchor="middle" font-size="20" font-weight="600">Codex</text>
+<rect x="746" y="50" width="190" height="52" rx="16" fill="#d0bfff" stroke="#1e1e1e" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="841" y="76" text-anchor="middle" font-size="18" font-weight="600">Cursor</text>
+<text class="muted" x="841" y="94" text-anchor="middle" font-size="12">slash door · not a worker</text>
+<path d="M538 126 L538 178" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
+<ellipse cx="538" cy="218" rx="130" ry="36" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="538" y="214" text-anchor="middle" font-size="22" font-weight="600">human</text>
+<text class="muted" x="538" y="232" text-anchor="middle" font-size="13">classify · quiz · merge</text>
+<path d="M538 256 L538 296" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
+<rect x="368" y="300" width="340" height="78" rx="16" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="538" y="334" text-anchor="middle" font-size="22" font-weight="600">Tech lead</text>
+<text class="muted" x="538" y="356" text-anchor="middle" font-size="13">quiz · ticket · never implement</text>
+<path d="M538 380 L538 418" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
+<rect x="348" y="422" width="380" height="78" rx="16" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="538" y="456" text-anchor="middle" font-size="22" font-weight="600">factory.sh floor</text>
+<text class="muted" x="538" y="478" text-anchor="middle" font-size="13">bash · one isolated process</text>
+<path d="M538 502 L538 540" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
+<rect x="418" y="544" width="240" height="64" rx="16" fill="#d0bfff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="538" y="572" text-anchor="middle" font-size="20" font-weight="600">tickets</text>
+<text class="muted" x="538" y="590" text-anchor="middle" font-size="13">owning repo · ready-for-agent</text>
+<path d="M478 610 L430 656" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
+<path d="M538 610 L538 656" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
+<path d="M598 610 L686 656" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
+<rect x="348" y="660" width="150" height="68" rx="16" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="423" y="688" text-anchor="middle" font-size="18" font-weight="600">Bug</text>
+<text class="muted" x="423" y="708" text-anchor="middle" font-size="13">browser repro → TDD</text>
+<rect x="518" y="660" width="160" height="68" rx="16" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="598" y="688" text-anchor="middle" font-size="18" font-weight="600">Feature</text>
+<text class="muted" x="598" y="708" text-anchor="middle" font-size="13">do not expand</text>
+<rect x="698" y="660" width="150" height="68" rx="16" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="773" y="688" text-anchor="middle" font-size="18" font-weight="600">Docs</text>
+<text class="muted" x="773" y="708" text-anchor="middle" font-size="13">docs only</text>
+<path d="M423 730 L500 776" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
+<path d="M598 730 L568 776" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
+<path d="M773 730 L640 790" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
+<rect x="418" y="780" width="250" height="68" rx="16" fill="#d0bfff" stroke="#1e1e1e" stroke-width="1.5" stroke-dasharray="7 5"/>
+<text x="543" y="808" text-anchor="middle" font-size="20" font-weight="600">QA</text>
+<text class="muted" x="543" y="828" text-anchor="middle" font-size="13">if URL · else skip</text>
+<path d="M543 850 L543 888" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
+<rect x="418" y="892" width="250" height="64" rx="16" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="543" y="920" text-anchor="middle" font-size="20" font-weight="600">Review</text>
+<text class="muted" x="543" y="938" text-anchor="middle" font-size="13">harsh · comments, not patches</text>
+<path d="M543 958 L543 996" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
+<rect x="418" y="1000" width="250" height="64" rx="16" fill="#99e9f2" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="543" y="1028" text-anchor="middle" font-size="20" font-weight="600">CI</text>
+<text class="muted" x="543" y="1046" text-anchor="middle" font-size="13">gh pr checks until green</text>
+<path d="M543 1066 L543 1108" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
+<ellipse cx="543" cy="1150" rx="175" ry="38" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="543" y="1146" text-anchor="middle" font-size="22" font-weight="600">human merges</text>
+<text class="muted" x="543" y="1166" text-anchor="middle" font-size="13">agents never merge</text>
+<rect x="-120" y="400" width="300" height="252" rx="16" fill="#e9ecef" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="30" y="430" text-anchor="middle" font-size="20">Telemetry</text>
+<text class="muted" x="30" y="452" text-anchor="middle" font-size="13">errors · funnels · feature perf</text>
+<rect x="-100" y="470" width="124" height="52" rx="16" fill="#99e9f2" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="-38" y="502" text-anchor="middle" font-size="14" font-weight="600">PostHog</text>
+<rect x="36" y="470" width="124" height="52" rx="16" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="98" y="502" text-anchor="middle" font-size="14" font-weight="600">Datadog</text>
+<rect x="-100" y="538" width="124" height="52" rx="16" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="-38" y="570" text-anchor="middle" font-size="14" font-weight="600">App Insights</text>
+<rect x="36" y="538" width="124" height="52" rx="16" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="98" y="570" text-anchor="middle" font-size="14" font-weight="600">CloudWatch</text>
+<path d="M182 500 L348 690" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
+<path d="M182 560 L518 690" fill="none" stroke="#1e1e1e" stroke-width="1.5" marker-end="url(#m)"/>
+<text class="muted" x="250" y="530" text-anchor="middle" font-size="13">errors</text>
+<text class="muted" x="310" y="610" text-anchor="middle" font-size="13">funnels · perf</text>
+<path d="M30 400 L368 340" fill="none" stroke="#868e96" stroke-width="1.3" stroke-dasharray="6 5" marker-end="url(#md)"/>
+<text class="muted" x="140" y="360" text-anchor="middle" font-size="12">report</text>
+<rect x="800" y="400" width="230" height="88" rx="16" fill="#fff" stroke="#868e96" stroke-width="1.5" stroke-dasharray="7 5"/>
+<text x="915" y="436" text-anchor="middle" font-size="16" font-weight="600">this laptop</text>
+<text class="muted" x="915" y="458" text-anchor="middle" font-size="13">mem read / write</text>
+<text class="muted" x="915" y="476" text-anchor="middle" font-size="12">~/.factory/memory</text>
+<rect x="800" y="508" width="230" height="88" rx="16" fill="#fff" stroke="#868e96" stroke-width="1.5" stroke-dasharray="7 5"/>
+<text x="915" y="544" text-anchor="middle" font-size="16" font-weight="600">GitHub comments</text>
+<text class="muted" x="915" y="566" text-anchor="middle" font-size="13">done · blocked · failed</text>
+<text class="muted" x="915" y="584" text-anchor="middle" font-size="12">public ledger</text>
+<path d="M728 460 L798 444" fill="none" stroke="#868e96" stroke-width="1.3" stroke-dasharray="6 5" marker-end="url(#md)"/>
+<text class="muted" x="770" y="430" text-anchor="middle" font-size="12">report</text>
+<path d="M668 728 L800 552" fill="none" stroke="#868e96" stroke-width="1.3" stroke-dasharray="6 5" marker-end="url(#md)"/>
+<path d="M800 548 L728 470" fill="none" stroke="#868e96" stroke-width="1.3" stroke-dasharray="6 5" marker-end="url(#md)"/>
+<text class="muted" x="790" y="640" text-anchor="middle" font-size="12">hand back</text>
 </svg>
