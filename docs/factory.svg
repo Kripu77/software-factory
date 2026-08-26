@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img">
+<title>Software factory</title>
+<rect width="1600" height="1000" fill="#fafafa"/>
+<defs>
+  <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M0 0 L10 5 L0 10 z" fill="#171717"/>
+  </marker>
+  <marker id="arrd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M0 0 L10 5 L0 10 z" fill="#737373"/>
+  </marker>
+</defs>
+<style>
+  text { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #171717; }
+  .sub { fill: #525252; }
+  .cap { fill: #737373; letter-spacing: 0.04em; }
+</style>
+
+<text class="cap" x="800" y="36" text-anchor="middle" font-size="13">RUNNER PLUG</text>
+<rect x="430" y="52" width="130" height="44" rx="6" fill="#fff" stroke="#171717" stroke-width="1.4"/>
+<text x="495" y="80" text-anchor="middle" font-size="15" font-weight="600">Grok</text>
+<rect x="575" y="52" width="130" height="44" rx="6" fill="#fff" stroke="#171717" stroke-width="1.4"/>
+<text x="640" y="80" text-anchor="middle" font-size="15" font-weight="600">Claude</text>
+<rect x="720" y="52" width="130" height="44" rx="6" fill="#fff" stroke="#171717" stroke-width="1.4"/>
+<text x="785" y="80" text-anchor="middle" font-size="15" font-weight="600">Codex</text>
+<rect x="865" y="52" width="150" height="44" rx="6" fill="#fff" stroke="#737373" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="940" y="72" text-anchor="middle" font-size="15" font-weight="600">Cursor</text>
+<text class="sub" x="940" y="88" text-anchor="middle" font-size="11">slash door</text>
+
+<path d="M495 96 L740 128" fill="none" stroke="#171717" stroke-width="1.4" marker-end="url(#arr)"/>
+<path d="M640 96 L760 128" fill="none" stroke="#171717" stroke-width="1.4"/>
+<path d="M785 96 L800 128" fill="none" stroke="#171717" stroke-width="1.4"/>
+<path d="M940 96 L860 128" fill="none" stroke="#737373" stroke-width="1.4" stroke-dasharray="5 4"/>
+
+<rect x="700" y="132" width="200" height="44" rx="6" fill="#fef9c3" stroke="#171717" stroke-width="1.4"/>
+<text x="800" y="160" text-anchor="middle" font-size="16" font-weight="600">Human</text>
+
+<path d="M800 176 L800 204" fill="none" stroke="#171717" stroke-width="1.4" marker-end="url(#arr)"/>
+
+<rect x="655" y="208" width="290" height="52" rx="6" fill="#dbeafe" stroke="#171717" stroke-width="1.4"/>
+<text x="800" y="231" text-anchor="middle" font-size="16" font-weight="600">Tech lead</text>
+<text class="sub" x="800" y="248" text-anchor="middle" font-size="11">quiz · ticket · never implement</text>
+
+<path d="M800 260 L800 288" fill="none" stroke="#171717" stroke-width="1.4" marker-end="url(#arr)"/>
+
+<rect x="630" y="292" width="340" height="52" rx="6" fill="#ffedd5" stroke="#171717" stroke-width="1.4"/>
+<text x="800" y="315" text-anchor="middle" font-size="16" font-weight="600">factory.sh floor</text>
+<text class="sub" x="800" y="332" text-anchor="middle" font-size="11">one isolated process at a time</text>
+
+<path d="M800 344 L800 372" fill="none" stroke="#171717" stroke-width="1.4" marker-end="url(#arr)"/>
+
+<rect x="700" y="376" width="200" height="48" rx="6" fill="#ede9fe" stroke="#171717" stroke-width="1.4"/>
+<text x="800" y="397" text-anchor="middle" font-size="15" font-weight="600">Tickets</text>
+<text class="sub" x="800" y="413" text-anchor="middle" font-size="11">ready-for-agent</text>
+
+<path d="M760 424 L620 468" fill="none" stroke="#171717" stroke-width="1.4" marker-end="url(#arr)"/>
+<path d="M800 424 L800 468" fill="none" stroke="#171717" stroke-width="1.4" marker-end="url(#arr)"/>
+<path d="M840 424 L980 468" fill="none" stroke="#171717" stroke-width="1.4" marker-end="url(#arr)"/>
+
+<rect x="530" y="472" width="150" height="48" rx="6" fill="#fee2e2" stroke="#171717" stroke-width="1.4"/>
+<text x="605" y="501" text-anchor="middle" font-size="15" font-weight="600">Bug</text>
+<rect x="725" y="472" width="150" height="48" rx="6" fill="#dcfce7" stroke="#171717" stroke-width="1.4"/>
+<text x="800" y="501" text-anchor="middle" font-size="15" font-weight="600">Feature</text>
+<rect x="920" y="472" width="150" height="48" rx="6" fill="#fef9c3" stroke="#171717" stroke-width="1.4"/>
+<text x="995" y="501" text-anchor="middle" font-size="15" font-weight="600">Docs</text>
+
+<path d="M605 520 L720 560" fill="none" stroke="#171717" stroke-width="1.4" marker-end="url(#arr)"/>
+<path d="M800 520 L800 560" fill="none" stroke="#171717" stroke-width="1.4" marker-end="url(#arr)"/>
+<path d="M995 520 L995 640" fill="none" stroke="#171717" stroke-width="1.4"/>
+<path d="M995 640 L900 640" fill="none" stroke="#171717" stroke-width="1.4" marker-end="url(#arr)"/>
+
+<rect x="690" y="564" width="220" height="48" rx="6" fill="#fafafa" stroke="#171717" stroke-width="1.4" stroke-dasharray="6 4"/>
+<text x="800" y="585" text-anchor="middle" font-size="15" font-weight="600">QA</text>
+<text class="sub" x="800" y="601" text-anchor="middle" font-size="11">if URL · else skip</text>
+
+<path d="M800 612 L800 640" fill="none" stroke="#171717" stroke-width="1.4" marker-end="url(#arr)"/>
+
+<rect x="690" y="644" width="220" height="44" rx="6" fill="#ffedd5" stroke="#171717" stroke-width="1.4"/>
+<text x="800" y="672" text-anchor="middle" font-size="15" font-weight="600">Review</text>
+
+<path d="M800 688 L800 716" fill="none" stroke="#171717" stroke-width="1.4" marker-end="url(#arr)"/>
+
+<rect x="690" y="720" width="220" height="44" rx="6" fill="#cffafe" stroke="#171717" stroke-width="1.4"/>
+<text x="800" y="748" text-anchor="middle" font-size="15" font-weight="600">CI</text>
+
+<path d="M800 764 L800 800" fill="none" stroke="#171717" stroke-width="1.4" marker-end="url(#arr)"/>
+
+<rect x="690" y="804" width="220" height="48" rx="6" fill="#fef9c3" stroke="#171717" stroke-width="1.4"/>
+<text x="800" y="834" text-anchor="middle" font-size="15" font-weight="600">Human merges</text>
+
+<!-- Telemetry -->
+<rect x="48" y="280" width="280" height="200" rx="6" fill="#fff" stroke="#171717" stroke-width="1.4"/>
+<text x="188" y="312" text-anchor="middle" font-size="16" font-weight="600">Telemetry</text>
+<text class="sub" x="188" y="332" text-anchor="middle" font-size="12">errors · funnels · perf</text>
+<rect x="68" y="352" width="112" height="40" rx="4" fill="#f4f4f5" stroke="#171717" stroke-width="1.2"/>
+<text x="124" y="377" text-anchor="middle" font-size="12">PostHog</text>
+<rect x="196" y="352" width="112" height="40" rx="4" fill="#f4f4f5" stroke="#171717" stroke-width="1.2"/>
+<text x="252" y="377" text-anchor="middle" font-size="12">Datadog</text>
+<rect x="68" y="408" width="112" height="40" rx="4" fill="#f4f4f5" stroke="#171717" stroke-width="1.2"/>
+<text x="124" y="433" text-anchor="middle" font-size="12">App Insights</text>
+<rect x="196" y="408" width="112" height="40" rx="4" fill="#f4f4f5" stroke="#171717" stroke-width="1.2"/>
+<text x="252" y="433" text-anchor="middle" font-size="12">CloudWatch</text>
+<path d="M328 370 L530 490" fill="none" stroke="#171717" stroke-width="1.4" marker-end="url(#arr)"/>
+<path d="M328 420 L725 490" fill="none" stroke="#171717" stroke-width="1.4" marker-end="url(#arr)"/>
+<text class="sub" x="400" y="368" font-size="11">errors</text>
+<text class="sub" x="430" y="450" font-size="11">funnels / perf</text>
+<path d="M188 280 C188 240 400 230 655 234" fill="none" stroke="#737373" stroke-width="1.2" stroke-dasharray="5 4" marker-end="url(#arrd)"/>
+<text class="cap" x="360" y="250" font-size="11">report</text>
+
+<!-- Memory -->
+<rect x="1272" y="280" width="280" height="220" rx="6" fill="#dcfce7" stroke="#171717" stroke-width="1.6"/>
+<text x="1412" y="320" text-anchor="middle" font-size="18" font-weight="700">Memory</text>
+<text x="1412" y="348" text-anchor="middle" font-size="13">your device</text>
+<text class="sub" x="1412" y="368" text-anchor="middle" font-size="12">factory.db</text>
+<text x="1412" y="408" text-anchor="middle" font-size="13" font-weight="600">GitHub comments</text>
+<text class="sub" x="1412" y="428" text-anchor="middle" font-size="12">public ledger</text>
+<text class="sub" x="1412" y="452" text-anchor="middle" font-size="12">done · blocked · failed</text>
+
+<path d="M1070 496 C1180 496 1220 400 1272 390" fill="none" stroke="#737373" stroke-width="1.2" stroke-dasharray="5 4" marker-end="url(#arrd)"/>
+<path d="M970 668 C1180 668 1240 500 1272 430" fill="none" stroke="#737373" stroke-width="1.2" stroke-dasharray="5 4" marker-end="url(#arrd)"/>
+<path d="M910 742 C1200 742 1280 520 1412 500" fill="none" stroke="#737373" stroke-width="1.2" stroke-dasharray="5 4"/>
+<path d="M1272 340 C1100 300 1000 250 945 234" fill="none" stroke="#737373" stroke-width="1.2" stroke-dasharray="5 4" marker-end="url(#arrd)"/>
+<text class="cap" x="1180" y="270" font-size="11">report</text>
+<text class="cap" x="1188" y="510" font-size="11">hand back</text>
+</svg>
