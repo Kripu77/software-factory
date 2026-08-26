@@ -2,11 +2,11 @@
 
 One agent doing the whole job is an intern with admin. A factory is lanes, a ticket, and a human who merges.
 
-Classify the work, cut tracer-bullet tickets, implement on the checkout, smoke it in a browser, review like you hate the PR, watch CI until green. Then a person merges. Agents never merge.
+Classify the work. Cut tracer-bullet tickets. Implement on the checkout. Smoke it in a browser. Review like you hate the PR. Watch CI until green. A person merges. Agents never merge.
 
 The runner is a plug. Grok, Claude Code, Codex, Cursor. Same `AGENTS.md`, same skills.
 
-Telemetry is a plug too. It is not an error inbox. It watches breakage and whether the product is actually working: funnels on any path, feature completion, time-to-value. Signup drop-off is one signal. So is onboarding, checkout, invite, the core loop, or a shipped feature nobody finishes. PostHog, Datadog, Azure App Insights, CloudWatch speak the same contract. Swap the vendor. Keep the questions.
+Telemetry is a plug too. Not an error inbox. It answers whether a path broke or a feature died: signup, onboarding, checkout, invite, the core loop, a shipped screen nobody finishes. PostHog, Datadog, Azure App Insights, and CloudWatch all speak [`telemetry/CONTRACT.md`](telemetry/CONTRACT.md). Swap the vendor. Keep the questions.
 
 ![Software factory](docs/factory.png)
 
@@ -14,25 +14,25 @@ Editable source: [`docs/factory.excalidraw`](docs/factory.excalidraw).
 
 ## How it runs
 
-You open one CLI. `/lead` (or `factory.sh lead`) classifies, quizzes, and tickets. It does not write product code. After tickets exist it starts `factory.sh floor`. Implementing, reviewing, or watching CI in the lead session is a failed run.
+Open one CLI. `/lead` or `factory.sh lead` classifies, quizzes, and tickets. It does not write product code. After tickets exist it starts `factory.sh floor`. If the lead session implements, reviews, or watches CI, that run failed.
 
-Floor is the Tech lead loop in bash. It dispatches **one** isolated `factory.sh` lane, waits, then dispatches the next. Workers are new processes with that lane's rules. Floor never implements. It never merges.
+Floor is bash. It starts one isolated `factory.sh` lane, waits, then starts the next. Each worker is a new process with that lane's rules. Floor does not implement. Floor does not merge.
 
-Typical table: implement (feature, bug, or docs) → QA if you passed a URL, else skip QA → review → CI. Telemetry first when the ticket looks like breakage or drop-off and there is no evidence yet. Stop when a person should merge, or when a lane reports `blocked` or `failed`.
+Order is implement (feature, bug, or docs), then QA if you passed a URL, else skip QA, then review, then CI. Telemetry runs first when the ticket looks like breakage or drop-off and nobody has pulled evidence yet. Stop when a person should merge, or a lane reports `blocked` or `failed`.
 
-Lanes report back. They do not chain themselves. Tech lead (or floor) dispatches the next.
+Lanes report back. They do not dispatch the next lane. Tech lead or floor does.
 
-Cursor is a slash-command door. It is not a `factory.sh --runner`. `/lead` in Cursor starts `factory.sh`, which needs Claude, Codex, or Grok on PATH. If more than one of those is installed, set `FACTORY_RUNNER` or `--runner`. If only one is installed, `factory.sh` uses it. It does not prefer Grok.
+Cursor is a slash-command door, not a `factory.sh --runner`. `/lead` in Cursor starts `factory.sh`, which needs Claude, Codex, or Grok on PATH. Two of those installed means you set `FACTORY_RUNNER` or `--runner`. One installed means `factory.sh` uses it. It does not prefer Grok.
 
 ## Handoff and hand back
 
-Two ledgers. They stay separate.
+Two ledgers. Keep them apart.
 
-**This laptop.** `factory.sh mem write` / `mem read` against `~/.factory/memory/factory.db`. The next `/bug` or `factory.sh feature` on this machine reads those rows at start. A worker writes `started` only if nothing is in progress, then `done`, `blocked`, or `failed`. Missing memory warns once and the lane continues. Optional. Best-effort. Not git. Never `.env`.
+**This laptop.** `factory.sh mem write` and `mem read` hit `~/.factory/memory/factory.db`. The next `/bug` or `factory.sh feature` on this machine reads those rows at start. A worker writes `started` only if nothing is in progress, then `done`, `blocked`, or `failed`. If the db is missing, warn once and continue. Optional. Best-effort. Not git. Never `.env`.
 
-**Everyone else.** On `done`, `blocked`, or `failed` (not `started`), the write also comments on the GitHub issue or PR: status, URL, evidence, what next. That comment is the public ledger. Tech lead and another laptop read GitHub when this machine has no rows. Memory is a hint, not a lock.
+**Everyone else.** On `done`, `blocked`, or `failed` (not `started`), the write comments on the GitHub issue or PR: status, URL, evidence, what next. That comment is the public ledger. Tech lead and another laptop read GitHub when this machine has no rows. Memory is a hint, not a lock.
 
-Floor uses GitHub for "is there a PR, a review, green checks?" Memory on this laptop for `blocked` / `failed` and for "QA was skipped, no URL."
+Floor asks GitHub whether there is a PR, a review, and green checks. It asks this laptop's memory for `blocked` / `failed` and for "QA was skipped, no URL."
 
 ## Lanes
 
@@ -57,8 +57,6 @@ cd software-factory
 
 Install creates `~/.factory/memory`. It does not touch other memory plugins.
 
-One pack. Four harnesses.
-
 | Harness | How it loads |
 | --- | --- |
 | Cursor | local plugin at `~/.cursor/plugins/local/software-factory` |
@@ -66,16 +64,16 @@ One pack. Four harnesses.
 | Grok Build | plugin at `~/.grok/plugins/software-factory` (`grok plugin install . --trust`) |
 | Codex | skills under `~/.codex/skills` plus `AGENTS.md` in the product checkout |
 
-Then set the product checkout:
+Then:
 
 ```bash
-export FACTORY_WORKSPACE=/path/to/your/checkout
+export FACTORY_WORKSPACE=/path/to/your-checkout
 export FACTORY_OWNER=your-github-org
 ```
 
 ## Run
 
-Open the CLI and start at lead:
+Start at lead:
 
 - `/lead` with owner/repo#issue
 
@@ -90,7 +88,7 @@ Or one lane, still one ticket:
 - `/unslop` on any writing
 - `/poteto-mode` for the writing and playbook style
 
-Headless (never merges):
+Headless. Never merges.
 
 ```bash
 ./factory.sh lead   --repo api --issue 12
@@ -109,13 +107,13 @@ Headless (never merges):
 
 ## What this pack will not do
 
-A person still quizzes before tickets, logs in for a protected browser, and merges. Agents never merge.
+A person still quizzes before tickets, logs in for a protected browser, and merges.
 
-Telemetry adapters in this repo are vendor notes and a contract. They do not pull production data. The telemetry lane only works if the product checkout already has an adapter connected.
+Telemetry adapters in this repo are vendor notes and a contract. They do not pull production data. `/telemetry` only works if the product checkout already has an adapter wired.
 
-These lanes were used to build this factory. That is not the same as a walk on your app. Clone it onto a repo you own, set `FACTORY_WORKSPACE` and `FACTORY_OWNER`, put one worker CLI on PATH (or set `FACTORY_RUNNER`), run `/lead` or `factory.sh floor --repo … --issue …`, and you merge.
+We used these lanes to build this factory. That does not mean they have been walked on your app. Clone onto a repo you own, set `FACTORY_WORKSPACE` and `FACTORY_OWNER`, put one worker CLI on PATH or set `FACTORY_RUNNER`, run `/lead` or `factory.sh floor --repo <name> --issue <n>`, and you merge.
 
-Do not treat `./install.sh` as "any CLI will run a factory."
+`./install.sh` does not make every CLI a factory.
 
 ## Hard rules
 
@@ -129,4 +127,4 @@ Do not treat `./install.sh` as "any CLI will run a factory."
 
 ## Telemetry
 
-See [`telemetry/CONTRACT.md`](telemetry/CONTRACT.md). Breakage and product performance. Funnels are any instrumented path, not one screen. Session replay is optional. If the vendor cannot replay or cannot funnel, say so. Do not invent either. This pack does not ship a live PostHog, Datadog, App Insights, or CloudWatch client. Wire the adapter in the product. Then ask `/telemetry`.
+See [`telemetry/CONTRACT.md`](telemetry/CONTRACT.md). Funnels are any instrumented path, not one screen. Session replay is optional. If the vendor cannot replay or cannot funnel, say so. Do not invent either. This pack does not ship a live PostHog, Datadog, App Insights, or CloudWatch client. Wire the adapter in the product. Then ask `/telemetry`.
