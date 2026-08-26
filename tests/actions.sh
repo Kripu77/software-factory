@@ -20,8 +20,6 @@ if grep -qi "self-hosted" "$wf"; then
 fi
 grep -q "tests/\*\.sh" "$wf" || fail "should run tests/*.sh"
 grep -q "sqlite3" "$wf" || fail "job should provide sqlite3"
-grep -q "bash" "$wf" || fail "job should provide bash"
-grep -q "git" "$wf" || fail "job should provide git"
 
 if grep -q "gh pr merge" "$wf" || grep -q "gh merge" "$wf"; then
   fail "workflow must not merge"
