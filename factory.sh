@@ -462,6 +462,7 @@ warn_mem() {
 
 bug_mem_write() {
   local status="$1" err code
+  shift
   err="$(mktemp)"
   set +e
   "$FACTORY/factory.sh" mem write \
@@ -471,6 +472,7 @@ bug_mem_write() {
     --issue "$ISSUE" \
     ${OWNER:+--owner "$OWNER"} \
     ${REPO:+--repo "$REPO"} \
+    "$@" \
     >/dev/null 2>"$err"
   code=$?
   set -e
@@ -493,24 +495,53 @@ bug_mem_start() {
     warn_mem "$(cat "$err")"
   fi
   rm -f "$err"
-  bug_mem_write started
+}
+
+bug_latest_status() {
+  local rec_lane="" rec_st=""
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    case "$line" in
+      *"lane = "*) rec_lane="${line##* = }" ;;
+      *"status = "*) rec_st="${line##* = }" ;;
+      "")
+        if [[ "$rec_lane" == "bug" ]]; then
+          printf '%s\n' "$rec_st"
+          return 0
+        fi
+        rec_lane=""
+        rec_st=""
+        ;;
+    esac
+  done
+  if [[ "$rec_lane" == "bug" ]]; then
+    printf '%s\n' "$rec_st"
+  fi
 }
 
 bug_mem_finish() {
-  local code="$1" db open status
-  db="$(memory_db)"
-  [[ -f "$db" ]] || return 0
-  command -v sqlite3 >/dev/null 2>&1 || return 0
+  local code="$1" status latest err rec_status
+  err="$(mktemp)"
   set +e
-  open="$(sqlite3 "$db" "SELECT COUNT(*) FROM runs WHERE issue = $(sql_quote "$ISSUE") AND lane = 'bug' AND status = 'started';")"
+  latest="$("$FACTORY/factory.sh" mem read --issue "$ISSUE" 2>"$err")"
   set -e
-  [[ "${open:-0}" -gt 0 ]] || return 0
+  if [[ -s "$err" ]]; then
+    warn_mem "$(cat "$err")"
+  fi
+  rm -f "$err"
+  rec_status="$(printf '%s\n' "$latest" | bug_latest_status)"
+  case "$rec_status" in
+    blocked|done|failed) return 0 ;;
+  esac
   if [[ "$code" -eq 0 ]]; then
     status=done
   else
     status=failed
   fi
-  bug_mem_write "$status"
+  local extra=(--summary "Bug lane ${status}." --next-steps "Tech lead dispatches the next lane.")
+  if [[ -n "$OWNER" && -n "$REPO" && -n "$ISSUE" ]]; then
+    extra+=(--evidence "https://github.com/${OWNER}/${REPO}/issues/${ISSUE}")
+  fi
+  bug_mem_write "$status" "${extra[@]}"
 }
 
 case "$LANE" in
@@ -531,6 +562,7 @@ case "$LANE" in
     DIR="$(repo_dir)"
     bug_mem_start
     prompt="Implement GitHub issue $(issue_url "$ISSUE") in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."
+    prompt+=$'\n'"Memory writes: factory.sh mem write --lane bug --harness $RUNNER --issue $ISSUE --summary '<one sentence>' --evidence <url-or-path> --next-steps '<next>'."
     if [[ -n "${MEM_CONTEXT:-}" ]]; then
       prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
     fi

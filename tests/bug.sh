@@ -12,7 +12,22 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 need_text() {
   local file="$1" pat="$2"
-  grep -q "$pat" "$ROOT/$file" || fail "$file missing /$pat/"
+  grep -q -- "$pat" "$ROOT/$file" || fail "$file missing /$pat/"
+}
+
+bytes_under() {
+  local file="$1" max="$2" n
+  n="$(wc -c < "$ROOT/$file" | tr -d ' ')"
+  [[ "$n" -lt "$max" ]] || fail "$file is $n bytes, stay under $max"
+}
+
+fn_body() {
+  local name="$1"
+  awk -v n="$name" '
+    $0 ~ "^" n "\\(\\)" {on=1}
+    on {print}
+    on && /^}$/ {exit}
+  ' "$ROOT/factory.sh"
 }
 
 WS="$TMP/workspace"
@@ -36,9 +51,14 @@ done
 : > "$dump/ran"
 if command -v sqlite3 >/dev/null 2>&1 && [[ -f "${FACTORY_MEMORY_DB:-}" ]]; then
   sqlite3 "$FACTORY_MEMORY_DB" "SELECT status FROM runs WHERE lane = 'bug' ORDER BY id DESC LIMIT 1;" > "$dump/status-at-start" || true
+else
+  : > "$dump/status-at-start"
+fi
+if [[ -n "${GROK_MEM_START:-}" ]]; then
+  "${FACTORY_SH:?}" mem write --lane bug --status started --harness grok --issue 5 --project acme/widgets >/dev/null
 fi
 if [[ -n "${GROK_MEM_STATUS:-}" ]]; then
-  "${FACTORY_SH:?}" mem write --lane bug --status "$GROK_MEM_STATUS" --harness grok --issue 5 --project acme/widgets --summary "${GROK_SUMMARY:-Lane finished}" --evidence "${GROK_EVIDENCE:-https://github.com/acme/widgets/issues/5}" >/dev/null
+  "${FACTORY_SH:?}" mem write --lane bug --status "$GROK_MEM_STATUS" --harness grok --issue 5 --project acme/widgets --summary "${GROK_SUMMARY:-Lane finished}" --evidence "${GROK_EVIDENCE:-https://github.com/acme/widgets/issues/5}" --next-steps "${GROK_NEXT:-Tech lead dispatches the next lane}" >/dev/null
 fi
 exit "${GROK_EXIT:-0}"
 EOF
@@ -62,6 +82,14 @@ count_runs() {
   sqlite3 "$FACTORY_MEMORY_DB" "SELECT COUNT(*) FROM runs WHERE issue = '5' AND lane = 'bug';"
 }
 
+count_status() {
+  sqlite3 "$FACTORY_MEMORY_DB" "SELECT COUNT(*) FROM runs WHERE issue = '5' AND lane = 'bug' AND status = '$1';"
+}
+
+field_for() {
+  sqlite3 "$FACTORY_MEMORY_DB" "SELECT $1 FROM runs WHERE issue = '5' AND lane = 'bug' ORDER BY id DESC LIMIT 1;"
+}
+
 # Lane and /bug command wire mem read/write
 need_text lanes/bug.md "mem read"
 need_text lanes/bug.md "mem write"
@@ -72,6 +100,7 @@ need_text lanes/bug.md "failed"
 need_text lanes/bug.md "warn once"
 need_text lanes/bug.md "Tech lead"
 need_text lanes/bug.md "Do not dispatch"
+need_text lanes/bug.md "in-progress"
 need_text commands/bug.md "mem read"
 need_text commands/bug.md "mem write"
 need_text commands/bug.md "started"
@@ -79,8 +108,20 @@ need_text commands/bug.md "done"
 need_text commands/bug.md "blocked"
 need_text commands/bug.md "failed"
 need_text commands/bug.md "warn once"
+need_text commands/bug.md "in-progress"
+need_text commands/bug.md "--harness"
+need_text commands/bug.md "--summary"
+need_text commands/bug.md "--evidence"
+need_text commands/bug.md "--next-steps"
+bytes_under lanes/bug.md 1000
+bytes_under commands/bug.md 1000
+grep -q -- "--summary" "$ROOT/lanes/bug.md" && fail "put mem flags in /bug or the injected prompt, not a second dump in the lane"
 
-# Missing DB: warn once, lane still succeeds, started is written
+fn_body bug_mem_start | grep -Eq 'bug_mem_write started|--status started' && fail "wrapper must not write started"
+fn_body bug_mem_finish | grep -q sqlite3 && fail "bug_mem_finish must not call sqlite3"
+fn_body bug_mem_finish | grep -q "mem read\|bug_mem_write\|mem write" || fail "bug_mem_finish must go through factory.sh mem"
+
+# Missing DB: warn once, lane still succeeds, finish records done
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
 set +e
@@ -91,9 +132,12 @@ set -e
 [[ -f "$DUMP/ran" ]] || fail "missing db should still run the bug lane"
 warns="$(grep -c "factory.db\|factory memory" "$TMP/err" || true)"
 [[ "$warns" == "1" ]] || fail "missing db should warn once, got $warns: $(cat "$TMP/err")"
-[[ -f "$FACTORY_MEMORY_DB" ]] || fail "started write should create db"
+[[ -f "$FACTORY_MEMORY_DB" ]] || fail "finish write should create db"
 [[ "$(status_for)" == "done" ]] || fail "successful lane should finish done, got $(status_for)"
-[[ "$(cat "$DUMP/status-at-start")" == "started" ]] || fail "started should be written before the runner: $(cat "$DUMP/status-at-start")"
+[[ ! -s "$DUMP/status-at-start" ]] || fail "wrapper should not write started before the runner: $(cat "$DUMP/status-at-start")"
+[[ -n "$(field_for summary)" ]] || fail "terminal done missing summary"
+[[ "$(field_for evidence)" != "[]" ]] || fail "terminal done missing evidence"
+[[ -n "$(field_for next_steps)" ]] || fail "terminal done missing next_steps"
 
 # Second run sees the first in context
 rm -rf "$DUMP"
@@ -102,12 +146,14 @@ run_bug >"$TMP/out2" 2>"$TMP/err2"
 grep -q "acme/widgets" "$DUMP/prompt" || fail "second run should see prior memory: $(cat "$DUMP/prompt")"
 grep -q "status = done" "$DUMP/prompt" || fail "second run should see first run status: $(cat "$DUMP/prompt")"
 
-# Agent can write blocked; factory does not overwrite with done
+# Fake runner writes started then blocked; one row, blocked, no extra done
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
-GROK_MEM_STATUS=blocked GROK_SUMMARY="Need a human login" run_bug >"$TMP/bout" 2>"$TMP/berr"
+GROK_MEM_START=1 GROK_MEM_STATUS=blocked GROK_SUMMARY="Need a human login" run_bug >"$TMP/bout" 2>"$TMP/berr"
 [[ "$(status_for)" == "blocked" ]] || fail "blocked outcome should stick, got $(status_for)"
-[[ "$(count_runs)" == "1" ]] || fail "blocked should finish the started row, count=$(count_runs)"
+[[ "$(count_runs)" == "1" ]] || fail "started then blocked should be one row, count=$(count_runs)"
+[[ "$(count_status done)" == "0" ]] || fail "finish must not clobber blocked with done"
+[[ "$(field_for summary)" == "Need a human login" ]] || fail "blocked summary overwritten: $(field_for summary)"
 
 # Agent can write failed
 rm -rf "$DUMP" "$TMP/memory"
@@ -118,6 +164,7 @@ fcode=$?
 set -e
 [[ $fcode -ne 0 ]] || fail "failed runner should fail the lane"
 [[ "$(status_for)" == "failed" ]] || fail "failed outcome should stick, got $(status_for)"
+[[ "$(count_runs)" == "1" ]] || fail "failed should be one row, count=$(count_runs)"
 
 # sqlite3 missing: warn once, lane still succeeds
 hid="$TMP/nosqlite"

@@ -77,7 +77,7 @@ Headless / CI still uses the script (never merges):
 ./factory.sh mem read --issue 12
 ```
 
-Lane runs on this machine are stored in `~/.factory/memory/factory.db`. Not git. GitHub comments stay the public ledger. `/bug` reads it at start and writes started, then done, blocked, or failed.
+Lane runs on this machine are stored in `~/.factory/memory/factory.db`. Not git. GitHub comments stay the public ledger. `/bug` reads it at start and writes started if none in progress, then done, blocked, or failed.
 
 ## Hard rules
 
