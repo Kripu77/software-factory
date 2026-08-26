@@ -22,7 +22,7 @@ Typical table: implement (feature, bug, or docs) → QA if you passed a URL, els
 
 Lanes report back. They do not chain themselves. Tech lead (or floor) dispatches the next.
 
-Cursor is a floor door: slash commands in Cursor. `factory.sh` workers are Grok, Claude, or Codex on PATH. Set `FACTORY_RUNNER` if more than one is installed.
+Cursor is a slash-command door. It is not a `factory.sh --runner`. `/lead` in Cursor starts `factory.sh`, which needs Claude, Codex, or Grok on PATH. If more than one of those is installed, set `FACTORY_RUNNER` or `--runner`. If only one is installed, `factory.sh` uses it. It does not prefer Grok.
 
 ## Handoff and hand back
 
@@ -105,7 +105,17 @@ Headless (never merges):
 ./factory.sh mem read --issue 12
 ```
 
-`factory.sh ship` is an alias of `floor`. QA URL is `--url` or `FACTORY_QA_URL`.
+`factory.sh ship` is an alias of `floor`. QA URL is `--url` or `FACTORY_QA_URL`. `--yes` is for workers. Lead stays interactive for quiz and for `blocked`.
+
+## What this pack will not do
+
+A person still quizzes before tickets, logs in for a protected browser, and merges. Agents never merge.
+
+Telemetry adapters in this repo are vendor notes and a contract. They do not pull production data. The telemetry lane only works if the product checkout already has an adapter connected.
+
+These lanes were used to build this factory. That is not the same as a walk on your app. Clone it onto a repo you own, set `FACTORY_WORKSPACE` and `FACTORY_OWNER`, put one worker CLI on PATH (or set `FACTORY_RUNNER`), run `/lead` or `factory.sh floor --repo … --issue …`, and you merge.
+
+Do not treat `./install.sh` as "any CLI will run a factory."
 
 ## Hard rules
 
@@ -119,4 +129,4 @@ Headless (never merges):
 
 ## Telemetry
 
-See [`telemetry/CONTRACT.md`](telemetry/CONTRACT.md). Breakage and product performance. Funnels are any instrumented path, not one screen. Session replay is optional. If the vendor cannot replay or cannot funnel, say so. Do not invent either.
+See [`telemetry/CONTRACT.md`](telemetry/CONTRACT.md). Breakage and product performance. Funnels are any instrumented path, not one screen. Session replay is optional. If the vendor cannot replay or cannot funnel, say so. Do not invent either. This pack does not ship a live PostHog, Datadog, App Insights, or CloudWatch client. Wire the adapter in the product. Then ask `/telemetry`.

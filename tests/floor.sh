@@ -30,14 +30,14 @@ git -C "$WS/widgets" remote add origin "https://github.com/acme/widgets.git"
 DUMP="$TMP/dump"
 mkdir -p "$DUMP" "$TMP/bin"
 
-cat > "$TMP/bin/grok" << 'EOF'
+cat > "$TMP/bin/runner" << 'EOF'
 #!/usr/bin/env bash
 dump="${FAKE_DUMP:?}"
 : > "$dump/after-feature"
 printf 'grok\n' >> "$dump/dispatched"
-exit "${GROK_EXIT:-0}"
+exit "${AGENT_EXIT:-0}"
 EOF
-chmod +x "$TMP/bin/grok"
+chmod +x "$TMP/bin/runner"
 
 cat > "$TMP/bin/gh" << 'EOF'
 #!/usr/bin/env bash
@@ -73,7 +73,7 @@ run_floor() {
     FACTORY_SH="$FACTORY" \
     FACTORY_WORKSPACE="$WS" \
     FACTORY_OWNER=acme \
-    FACTORY_RUNNER=grok \
+    FACTORY_RUNNER=runner \
     "$FACTORY" floor --repo widgets --issue 12 "$@"
 }
 
@@ -97,7 +97,7 @@ fcount="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT COUNT(*) FROM runs WHERE issue = 
 # Blocked implement stops. No review or CI.
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
-GROK_EXIT=1 run_floor >"$TMP/bout" 2>"$TMP/berr" || true
+AGENT_EXIT=1 run_floor >"$TMP/bout" 2>"$TMP/berr" || true
 grep -q "dispatch feature" "$TMP/bout" || fail "blocked path should still dispatch feature"
 if grep -q "dispatch review" "$TMP/bout"; then
   fail "blocked must not dispatch review: $(cat "$TMP/bout")"
@@ -113,7 +113,7 @@ fi
 # ship is floor
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
-PATH="$TMP/bin:$PATH" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=grok \
+PATH="$TMP/bin:$PATH" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=runner \
   "$FACTORY" ship --repo widgets --issue 12 >"$TMP/sout" 2>"$TMP/serr"
 grep -q "a person merges" "$TMP/sout" || fail "ship should run the floor: $(cat "$TMP/sout")"
 
@@ -124,11 +124,11 @@ for cmd in bash mkdir date sed git grep dirname cat rm mktemp printf tr wc; do
   src="$(command -v "$cmd" || true)"
   [[ -n "$src" ]] && ln -sf "$src" "$hid/$cmd"
 done
-cp "$TMP/bin/grok" "$hid/grok"
+cp "$TMP/bin/runner" "$hid/runner"
 cp "$TMP/bin/gh" "$hid/gh"
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
-PATH="$hid" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=grok \
+PATH="$hid" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=runner \
   "$FACTORY" floor --repo widgets --issue 12 >"$TMP/nout" 2>"$TMP/nerr"
 grep -q "dispatch feature" "$TMP/nout" || fail "no-sqlite should dispatch feature: $(cat "$TMP/nout")"
 grep -q "dispatch review" "$TMP/nout" || fail "no-sqlite should dispatch review: $(cat "$TMP/nout")"

@@ -86,4 +86,5 @@ echo "Cursor:  /feature /bug /review /ci /telemetry /lead /unslop /poteto-mode /
 echo "Claude:  same slash commands after restart"
 echo "Grok:    grok plugin list, then /feature /unslop /poteto-mode /qa"
 echo "Codex:   AGENTS.md in the checkout"
-echo "CI door: $FACTORY/factory.sh feature --repo <name> --issue N"
+echo "CI door: $FACTORY/factory.sh lead --repo <name> --issue N"
+echo "If more than one of claude, codex, grok is on PATH, set FACTORY_RUNNER."
