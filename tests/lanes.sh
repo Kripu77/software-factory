@@ -111,7 +111,7 @@ run_env() {
     FACTORY_SH="$FACTORY" \
     FACTORY_WORKSPACE="$WS" \
     FACTORY_OWNER=acme \
-    FACTORY_RUNNER=runner \
+    FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
     "$@"
 }
 

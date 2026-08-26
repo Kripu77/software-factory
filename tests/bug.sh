@@ -70,7 +70,7 @@ run_bug() {
     FACTORY_SH="$FACTORY" \
     FACTORY_WORKSPACE="$WS" \
     FACTORY_OWNER=acme \
-    FACTORY_RUNNER=runner \
+    FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
     "$FACTORY" bug --repo widgets --issue 5
 }
 
@@ -180,7 +180,7 @@ cp "$TMP/bin/runner" "$hid/runner"
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
 set +e
-PATH="$hid" FAKE_DUMP="$DUMP" FACTORY_SH="$FACTORY" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=runner \
+PATH="$hid" FAKE_DUMP="$DUMP" FACTORY_SH="$FACTORY" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
   "$FACTORY" bug --repo widgets --issue 5 >"$TMP/nout" 2>"$TMP/nerr"
 ncode=$?
 set -e

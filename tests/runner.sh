@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FACTORY="$ROOT/factory.sh"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
+export FACTORY_MEMORY_DB="$TMP/memory/factory.db"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
@@ -88,10 +89,19 @@ dump="${FAKE_DUMP:?}"
 exit 0
 EOF
 chmod +x "$BIN/runner"
-rm -rf "$DUMP"
+rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
 PATH="$BIN" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=runner \
   "$FACTORY" feature --repo widgets --issue 1 >"$TMP/out5" 2>"$TMP/err5"
 [[ -f "$DUMP/generic" ]] || fail "FACTORY_RUNNER=runner should invoke runner, err=$(cat "$TMP/err5")"
+h="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT harness FROM runs ORDER BY id DESC LIMIT 1;" 2>/dev/null || true)"
+[[ -z "$h" ]] || fail "unknown runner must not write a harness row, got $h"
+
+rm -rf "$TMP/memory" "$DUMP"
+mkdir -p "$DUMP"
+PATH="$BIN" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=runner FACTORY_HARNESS=grok \
+  "$FACTORY" feature --repo widgets --issue 1 >"$TMP/out6" 2>"$TMP/err6"
+h="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT harness FROM runs ORDER BY id DESC LIMIT 1;")"
+[[ "$h" == "grok" ]] || fail "FACTORY_HARNESS=grok should record grok, got $h"
 
 echo "ok runner"

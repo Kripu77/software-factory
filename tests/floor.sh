@@ -73,7 +73,7 @@ run_floor() {
     FACTORY_SH="$FACTORY" \
     FACTORY_WORKSPACE="$WS" \
     FACTORY_OWNER=acme \
-    FACTORY_RUNNER=runner \
+    FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
     "$FACTORY" floor --repo widgets --issue 12 "$@"
 }
 
@@ -113,7 +113,7 @@ fi
 # ship is floor
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
-PATH="$TMP/bin:$PATH" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=runner \
+PATH="$TMP/bin:$PATH" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
   "$FACTORY" ship --repo widgets --issue 12 >"$TMP/sout" 2>"$TMP/serr"
 grep -q "a person merges" "$TMP/sout" || fail "ship should run the floor: $(cat "$TMP/sout")"
 
@@ -128,7 +128,7 @@ cp "$TMP/bin/runner" "$hid/runner"
 cp "$TMP/bin/gh" "$hid/gh"
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
-PATH="$hid" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=runner \
+PATH="$hid" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
   "$FACTORY" floor --repo widgets --issue 12 >"$TMP/nout" 2>"$TMP/nerr"
 grep -q "dispatch feature" "$TMP/nout" || fail "no-sqlite should dispatch feature: $(cat "$TMP/nout")"
 grep -q "dispatch review" "$TMP/nout" || fail "no-sqlite should dispatch review: $(cat "$TMP/nout")"

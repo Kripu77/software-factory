@@ -96,7 +96,7 @@ run_lead() {
     FACTORY_SH="$FACTORY" \
     FACTORY_WORKSPACE="$WS" \
     FACTORY_OWNER=acme \
-    FACTORY_RUNNER=runner \
+    FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
     "$FACTORY" lead --issue 7 --repo widgets
 }
 
@@ -165,7 +165,7 @@ cp "$TMP/bin/gh" "$hid/gh"
 rm -rf "$DUMP"
 mkdir -p "$DUMP"
 set +e
-PATH="$hid" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=runner \
+PATH="$hid" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_OWNER=acme FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
   "$FACTORY" lead --issue 7 --repo widgets >"$TMP/nout" 2>"$TMP/nerr"
 ncode=$?
 set -e

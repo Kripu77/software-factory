@@ -122,9 +122,12 @@ need_question() { [[ -n "$QUESTION" ]] || { echo "Need --question" >&2; exit 1; 
 
 record_harness() {
   case "${RUNNER:-}" in
-    claude|cursor|codex|grok) printf '%s\n' "$RUNNER" ;;
-    *) printf '%s\n' claude ;;
+    claude|cursor|codex|grok) printf '%s\n' "$RUNNER"; return 0 ;;
   esac
+  case "${FACTORY_HARNESS:-}" in
+    claude|cursor|codex|grok) printf '%s\n' "$FACTORY_HARNESS"; return 0 ;;
+  esac
+  return 1
 }
 
 repo_dir() {
@@ -574,14 +577,15 @@ mem_read_context() {
 }
 
 lane_mem_write() {
-  local lane="$1" status="$2" err code
+  local lane="$1" status="$2" err code h
   shift 2
+  h="$(record_harness)" || { warn_mem "Need FACTORY_HARNESS or --runner claude|codex|cursor|grok to record memory"; return 0; }
   err="$(mktemp)"
   set +e
   "$FACTORY/factory.sh" mem write \
     --lane "$lane" \
     --status "$status" \
-    --harness "$(record_harness)" \
+    --harness "$h" \
     ${ISSUE:+--issue "$ISSUE"} \
     ${PR:+--pr "$PR"} \
     ${OWNER:+--owner "$OWNER"} \
@@ -732,13 +736,14 @@ floor_review_count() {
 }
 
 floor_capture_pr() {
-  local lane="$1" num
+  local lane="$1" num h
   num="$(floor_pr_from_mem)"
   [[ -n "$num" ]] || num="$(floor_pr_from_gh)"
   [[ -n "$num" ]] || return 0
   PR="$num"
+  h="$(record_harness)" || return 0
   FACTORY_SKIP_TICKET_COMMENT=1 "$FACTORY/factory.sh" mem write \
-    --lane "$lane" --status done --harness "$(record_harness)" --issue "$ISSUE" --pr "$num" \
+    --lane "$lane" --status done --harness "$h" --issue "$ISSUE" --pr "$num" \
     ${OWNER:+--owner "$OWNER"} ${REPO:+--repo "$REPO"} \
     --summary "Opened PR ${num}." --next-steps "QA, review, CI" >/dev/null 2>/dev/null || true
 }
@@ -824,7 +829,7 @@ floor_next() {
 }
 
 floor_run() {
-  local next i
+  local next i h
   FLOOR_QA_SKIPPED=""
   FLOOR_DID_QA=""
   FLOOR_DID_REVIEW=""
@@ -853,10 +858,13 @@ floor_run() {
         ;;
       skip-qa)
         FLOOR_QA_SKIPPED=1
-        FACTORY_SKIP_TICKET_COMMENT=1 "$FACTORY/factory.sh" mem write \
-          --lane qa --status done --harness "$(record_harness)" --issue "$ISSUE" ${PR:+--pr "$PR"} \
-          ${OWNER:+--owner "$OWNER"} ${REPO:+--repo "$REPO"} \
-          --summary "QA skipped, no URL." --next-steps "Review the PR" >/dev/null 2>/dev/null || true
+        h="$(record_harness)" || h=""
+        if [[ -n "$h" ]]; then
+          FACTORY_SKIP_TICKET_COMMENT=1 "$FACTORY/factory.sh" mem write \
+            --lane qa --status done --harness "$h" --issue "$ISSUE" ${PR:+--pr "$PR"} \
+            ${OWNER:+--owner "$OWNER"} ${REPO:+--repo "$REPO"} \
+            --summary "QA skipped, no URL." --next-steps "Review the PR" >/dev/null 2>/dev/null || true
+        fi
         continue
         ;;
       feature|bug|docs|qa|review|ci|telemetry)
