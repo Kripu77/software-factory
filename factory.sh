@@ -565,7 +565,7 @@ ticket_comment() {
   command -v gh >/dev/null 2>&1 || { warn_mem "gh not installed"; return 0; }
   body="$SUMMARY"
   if [[ -n "${PR:-}" ]]; then
-    body+=$'\n'"$(pr_url "$PR")"
+    body+=$'\n\n'"[PR ${PR}]($(pr_url "$PR"))"
   fi
   err="$(mktemp)"
   set +e

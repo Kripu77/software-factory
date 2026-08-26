@@ -162,9 +162,13 @@ assert_news_body() {
       done|blocked|failed) fail "comment has status word: $body" ;;
     esac
     case "$line" in
+      \#*) fail "comment has # heading: $body" ;;
+    esac
+    case "$line" in
       *'/issues/'*) fail "comment has issue self-link: $body" ;;
     esac
     case "$line" in
+      '['*']('*) ;;
       '['*) fail "comment has JSON evidence: $body" ;;
     esac
     case "$line" in
@@ -179,12 +183,12 @@ mkdir -p "$DUMP"
 run_env "$FACTORY" mem write --lane feature --status started --harness grok --issue 6 --owner acme --repo widgets --project acme/widgets --summary "Start feature" >/dev/null
 [[ "$(gh_count)" == "0" ]] || fail "started must not comment: $(cat "$DUMP/gh")"
 
-# Terminal done comments once: summary plus PR URL, nothing else
+# Terminal done comments once: summary, blank line, markdown PR link
 run_env "$FACTORY" mem write --lane feature --status done --harness grok --issue 6 --owner acme --repo widgets --project acme/widgets --summary "Shipped the list" --evidence "https://github.com/acme/widgets/pull/40" --next-steps "Review the PR" >/dev/null
 [[ "$(gh_count)" == "1" ]] || fail "done should comment once, got $(gh_count): $(cat "$DUMP/gh")"
 grep -q "issue comment 6" "$DUMP/gh" || fail "done should gh issue comment: $(cat "$DUMP/gh")"
 assert_news_body
-want=$'Shipped the list\nhttps://github.com/acme/widgets/pull/40'
+want=$'Shipped the list\n\n[PR 40](https://github.com/acme/widgets/pull/40)'
 got="$(last_comment)"
 [[ "$got" == "$want" ]] || fail "comment body want $(printf %q "$want") got $(printf %q "$got")"
 pr="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT pr FROM runs WHERE issue = '6' ORDER BY id DESC LIMIT 1;")"
@@ -201,7 +205,7 @@ PATH="$TMP/bin:$PATH" \
   "$FACTORY" mem write --lane feature --status done --harness grok --issue 8 --project acme/widgets \
     --summary "Shipped from project" --evidence "https://github.com/acme/widgets/pull/40" >/dev/null
 assert_news_body
-want=$'Shipped from project\nhttps://github.com/acme/widgets/pull/40'
+want=$'Shipped from project\n\n[PR 40](https://github.com/acme/widgets/pull/40)'
 got="$(last_comment)"
 [[ "$got" == "$want" ]] || fail "project-only comment want $(printf %q "$want") got $(printf %q "$got")"
 pr="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT pr FROM runs WHERE issue = '8';")"
@@ -217,7 +221,7 @@ rm -f "$DUMP/gh" "$DUMP/comment-body"
 run_env "$FACTORY" mem write --lane review --status done --harness grok --pr 40 --owner acme --repo widgets --project acme/widgets --summary "Left review comments" --evidence "https://github.com/acme/widgets/pull/40" --next-steps "CI" >/dev/null
 grep -q "pr comment 40" "$DUMP/gh" || fail "review should gh pr comment: $(cat "$DUMP/gh")"
 assert_news_body
-want=$'Left review comments\nhttps://github.com/acme/widgets/pull/40'
+want=$'Left review comments\n\n[PR 40](https://github.com/acme/widgets/pull/40)'
 got="$(last_comment)"
 [[ "$got" == "$want" ]] || fail "review comment body want $(printf %q "$want") got $(printf %q "$got")"
 
@@ -309,7 +313,7 @@ AGENT_LANE=feature AGENT_ISSUE=6 AGENT_MEM_STATUS=done AGENT_SUMMARY="Shipped th
   run_feature >"$TMP/wout" 2>"$TMP/werr"
 [[ "$(gh_count)" == "1" ]] || fail "agent finish should comment once, got $(gh_count): $(cat "$DUMP/gh" 2>/dev/null || true)"
 assert_news_body
-want=$'Shipped the list\nhttps://github.com/acme/widgets/pull/40'
+want=$'Shipped the list\n\n[PR 40](https://github.com/acme/widgets/pull/40)'
 got="$(last_comment)"
 [[ "$got" == "$want" ]] || fail "wrapper must not replace the agent comment, want $(printf %q "$want") got $(printf %q "$got")"
 
@@ -319,6 +323,9 @@ grep -n -- "--next-steps" "$ROOT/factory.sh" | grep -q "A person merges" && fail
 
 # README public ledger is the comment, not status-plus-next-steps
 grep -q "status, URL, evidence, what next" "$ROOT/README.md" && fail "README still describes status-plus-next-steps as the ledger"
+grep -qiE 'your device|this device|another device' "$ROOT/README.md" && fail "README still says device"
+grep -qF '**Local.**' "$ROOT/README.md" || fail "README should call sqlite local memory"
+grep -qF '**GitHub.**' "$ROOT/README.md" || fail "README should call the GitHub comment the public ledger"
 
 fn_body ticket_comment | grep -q 'PROJECT%%' && fail "ticket_comment must not split PROJECT"
 fn_body ticket_comment | grep -q grep && fail "ticket_comment must not grep evidence"
