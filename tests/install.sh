@@ -28,18 +28,31 @@ need_text rules/factory.mdc "attribute"
 need_text rules/factory.mdc ".env"
 need_text factory.sh "mem read"
 need_text factory.sh "mem write"
+need_text README.md "/lead"
+need_text README.md "~/.local/bin"
+need_text README.md "git remote"
+need_text README.md "AGENTS.md"
 
 hid="$TMP/bin"
 mkdir -p "$hid"
-for cmd in bash mkdir ln rm echo grep command cat; do
+for cmd in bash mkdir ln rm echo grep command cat cp; do
   src="$(command -v "$cmd" || true)"
   [[ -n "$src" ]] && ln -sf "$src" "$hid/$cmd"
 done
 
 HOME="$TMP" PATH="$hid" "$ROOT/install.sh" >"$TMP/out" 2>"$TMP/err" || fail "install exit $? err=$(cat "$TMP/err")"
 [[ -d "$TMP/.factory/memory" ]] || fail "install should create ~/.factory/memory"
+[[ -L "$TMP/.local/bin/factory" ]] || fail "install should put factory on ~/.local/bin"
+[[ "$(readlink "$TMP/.local/bin/factory")" == "$ROOT/factory.sh" ]] || fail "factory symlink should point at factory.sh"
 grep -q "memory " "$TMP/out" || fail "install should mention memory: $(cat "$TMP/out")"
+grep -qi "lead" "$TMP/out" || fail "install should tell you to /lead: $(cat "$TMP/out")"
 [[ ! -e "$TMP/.claude-mem" ]] || fail "install must not create other plugin dirs"
 [[ ! -e "$TMP/.cursor-mem" ]] || fail "install must not create other plugin dirs"
+
+prod="$TMP/product"
+mkdir -p "$prod"
+HOME="$TMP" PATH="$hid" "$ROOT/install.sh" "$prod" >"$TMP/out2" 2>"$TMP/err2" || fail "install with checkout exit $? err=$(cat "$TMP/err2")"
+[[ -f "$prod/AGENTS.md" ]] || fail "install.sh <checkout> should write AGENTS.md"
+grep -q "Software factory" "$prod/AGENTS.md" || fail "AGENTS.md should be the factory house rules"
 
 echo "ok install"

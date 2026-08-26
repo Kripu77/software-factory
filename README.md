@@ -54,7 +54,15 @@ cd software-factory
 ./install.sh
 ```
 
-Install creates `~/.factory/memory`. It does not touch other memory plugins.
+That creates `~/.factory/memory`, installs the plugin, and puts `factory` on `~/.local/bin`. Codex: `./install.sh /path/to/your-checkout` also writes `AGENTS.md` there. Then:
+
+```bash
+cd /path/to/your-checkout
+grok          # or claude
+/lead
+```
+
+Owner and repo come from `git remote`. Workspace is this directory. Put `~/.local/bin` on PATH if `factory` is missing. Two of claude, codex, grok on PATH: set `FACTORY_RUNNER`.
 
 | Harness | How it loads |
 | --- | --- |
@@ -62,13 +70,6 @@ Install creates `~/.factory/memory`. It does not touch other memory plugins.
 | Claude Code | skills + slash commands under `~/.claude` |
 | Grok Build | plugin at `~/.grok/plugins/software-factory` (`grok plugin install . --trust`) |
 | Codex | skills under `~/.codex/skills` plus `AGENTS.md` in the product checkout |
-
-Then:
-
-```bash
-export FACTORY_WORKSPACE=/path/to/your-checkout
-export FACTORY_OWNER=your-github-org
-```
 
 ## Run
 
@@ -110,7 +111,7 @@ A person still quizzes before tickets, logs in for a protected browser, and merg
 
 Telemetry adapters in this repo are vendor notes and a contract. They do not pull production data. `/telemetry` only works if the product checkout already has an adapter wired.
 
-We used these lanes to build this factory. That does not mean they have been walked on your app. Clone onto a repo you own, set `FACTORY_WORKSPACE` and `FACTORY_OWNER`, put one worker CLI on PATH or set `FACTORY_RUNNER`, run `/lead` or `factory.sh floor --repo <name> --issue <n>`, and you merge.
+We used these lanes to build this factory. That does not mean they have been walked on your app. `./install.sh`, cd into a repo you own, `/lead`, and you merge.
 
 `./install.sh` does not make every CLI a factory.
 
