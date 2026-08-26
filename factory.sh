@@ -16,7 +16,7 @@ Usage:
   factory.sh telemetry        --question "<what broke>" [--yes]
   factory.sh qa               --repo <name> --pr <n> [--url <app>]
   factory.sh qa               --url <app>
-  factory.sh mem read         [--issue <n>] [--project owner/name] [--limit n]
+  factory.sh mem read         [--issue <n>] [--pr <n>] [--project owner/name] [--limit n]
   factory.sh mem write        --lane <lane> --status started|done|blocked|failed [--harness grok|claude|codex|cursor] [--issue <n>] [--pr <n>] [--project owner/name] [--summary s] [--next-steps s] [--evidence url-or-json]
 
 Never merges. A person merges.
@@ -377,6 +377,13 @@ mem_read() {
   if [[ -n "$ISSUE" ]]; then
     where="issue = $(sql_quote "$ISSUE")"
   fi
+  if [[ -n "$PR" ]]; then
+    if [[ -n "$where" ]]; then
+      where="$where AND pr = $(sql_quote "$PR")"
+    else
+      where="pr = $(sql_quote "$PR")"
+    fi
+  fi
   if [[ -n "$PROJECT" ]]; then
     if [[ -n "$where" ]]; then
       where="$where AND project = $(sql_quote "$PROJECT")"
@@ -448,6 +455,7 @@ SELECT last_insert_rowid();"
   fi
   id="$(sqlite_tx "$db" "$sql")"
   echo "id=$id status=$STATUS"
+  ticket_comment
 }
 
 MEM_WARNED=0
@@ -458,6 +466,46 @@ warn_mem() {
   MEM_WARNED=1
   [[ -n "${1:-}" ]] || return 0
   printf '%s\n' "$1" >&2
+}
+
+ticket_comment() {
+  local body err code url
+  case "${RUN_LANE:-}" in
+    feature|docs|qa|review|ci|telemetry) ;;
+    *) return 0 ;;
+  esac
+  case "${STATUS:-}" in
+    done|blocked|failed) ;;
+    *) return 0 ;;
+  esac
+  [[ -n "${OWNER:-}" && -n "${REPO:-}" ]] || return 0
+  [[ -n "${ISSUE:-}" || -n "${PR:-}" ]] || return 0
+  command -v gh >/dev/null 2>&1 || { warn_mem "gh not installed"; return 0; }
+  body="$STATUS"
+  [[ -n "${SUMMARY:-}" ]] && body+=$'\n'"$SUMMARY"
+  if [[ -n "${ISSUE:-}" ]]; then
+    url="https://github.com/${OWNER}/${REPO}/issues/${ISSUE}"
+  else
+    url="https://github.com/${OWNER}/${REPO}/pull/${PR}"
+  fi
+  body+=$'\n'"$url"
+  if [[ -n "${EVIDENCE:-}" && "$EVIDENCE" != "[]" ]]; then
+    body+=$'\n'"$EVIDENCE"
+  fi
+  [[ -n "${NEXT_STEPS:-}" ]] && body+=$'\n'"$NEXT_STEPS"
+  err="$(mktemp)"
+  set +e
+  if [[ -n "${ISSUE:-}" ]]; then
+    gh issue comment "$ISSUE" -R "${OWNER}/${REPO}" --body "$body" >/dev/null 2>"$err"
+  else
+    gh pr comment "$PR" -R "${OWNER}/${REPO}" --body "$body" >/dev/null 2>"$err"
+  fi
+  code=$?
+  set -e
+  if [[ $code -ne 0 ]]; then
+    warn_mem "$(cat "$err")"
+  fi
+  rm -f "$err"
 }
 
 bug_mem_write() {
@@ -544,6 +592,124 @@ bug_mem_finish() {
   bug_mem_write "$status" "${extra[@]}"
 }
 
+mem_read_context() {
+  local err code args=()
+  MEM_WARNED=0
+  MEM_CONTEXT=""
+  if [[ -n "${ISSUE:-}" ]]; then
+    args+=(--issue "$ISSUE")
+  elif [[ -n "${PR:-}" ]]; then
+    args+=(--pr "$PR")
+  else
+    return 0
+  fi
+  err="$(mktemp)"
+  set +e
+  MEM_CONTEXT="$("$FACTORY/factory.sh" mem read "${args[@]}" 2>"$err")"
+  code=$?
+  set -e
+  if [[ $code -ne 0 || -s "$err" ]]; then
+    warn_mem "$(cat "$err")"
+  fi
+  rm -f "$err"
+}
+
+lane_mem_write() {
+  local lane="$1" status="$2" err code
+  shift 2
+  err="$(mktemp)"
+  set +e
+  "$FACTORY/factory.sh" mem write \
+    --lane "$lane" \
+    --status "$status" \
+    --harness "$RUNNER" \
+    ${ISSUE:+--issue "$ISSUE"} \
+    ${PR:+--pr "$PR"} \
+    ${OWNER:+--owner "$OWNER"} \
+    ${REPO:+--repo "$REPO"} \
+    "$@" \
+    >/dev/null 2>"$err"
+  code=$?
+  set -e
+  if [[ $code -ne 0 || -s "$err" ]]; then
+    warn_mem "$(cat "$err")"
+  fi
+  rm -f "$err"
+}
+
+latest_lane_status() {
+  local want="$1" rec_lane="" rec_st=""
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    case "$line" in
+      *"lane = "*) rec_lane="${line##* = }" ;;
+      *"status = "*) rec_st="${line##* = }" ;;
+      "")
+        if [[ "$rec_lane" == "$want" ]]; then
+          printf '%s\n' "$rec_st"
+          return 0
+        fi
+        rec_lane=""
+        rec_st=""
+        ;;
+    esac
+  done
+  if [[ "$rec_lane" == "$want" ]]; then
+    printf '%s\n' "$rec_st"
+  fi
+}
+
+lane_mem_finish() {
+  local lane="$1" code="$2" status latest err rec_status args=() extra
+  err="$(mktemp)"
+  if [[ -n "${ISSUE:-}" ]]; then
+    args+=(--issue "$ISSUE")
+  elif [[ -n "${PR:-}" ]]; then
+    args+=(--pr "$PR")
+  fi
+  set +e
+  if [[ ${#args[@]} -gt 0 ]]; then
+    latest="$("$FACTORY/factory.sh" mem read "${args[@]}" 2>"$err")"
+  else
+    latest=""
+  fi
+  set -e
+  if [[ -s "$err" ]]; then
+    warn_mem "$(cat "$err")"
+  fi
+  rm -f "$err"
+  rec_status="$(printf '%s\n' "$latest" | latest_lane_status "$lane")"
+  case "$rec_status" in
+    blocked|done|failed) return 0 ;;
+  esac
+  if [[ "$code" -eq 0 ]]; then
+    status=done
+  else
+    status=failed
+  fi
+  extra=(--summary "${lane} lane ${status}." --next-steps "Tech lead dispatches the next lane.")
+  if [[ -n "$OWNER" && -n "$REPO" && -n "$ISSUE" ]]; then
+    extra+=(--evidence "https://github.com/${OWNER}/${REPO}/issues/${ISSUE}")
+  elif [[ -n "$OWNER" && -n "$REPO" && -n "$PR" ]]; then
+    extra+=(--evidence "https://github.com/${OWNER}/${REPO}/pull/${PR}")
+  fi
+  lane_mem_write "$lane" "$status" "${extra[@]}"
+}
+
+run_mem_lane() {
+  local lane="$1" dir="$2" rules="$3" prompt="$4" code
+  mem_read_context
+  prompt+=$'\n'"Memory writes: factory.sh mem write --lane $lane --harness $RUNNER ${ISSUE:+--issue $ISSUE }${PR:+--pr $PR }--summary '<one sentence>' --evidence <url-or-path> --next-steps '<next>'."
+  if [[ -n "${MEM_CONTEXT:-}" ]]; then
+    prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
+  fi
+  set +e
+  run_agent "$dir" "$rules" "$prompt"
+  code=$?
+  set -e
+  lane_mem_finish "$lane" "$code"
+  return "$code"
+}
+
 case "$LANE" in
   mem)
     case "$MEM_CMD" in
@@ -555,7 +721,8 @@ case "$LANE" in
   feature|docs)
     need_issue
     DIR="$(repo_dir)"
-    run_agent "$DIR" "$(cat "$FACTORY/lanes/${LANE}.md")"$'\n'"$HARD"       "Implement GitHub issue $(issue_url "$ISSUE") in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."
+    run_mem_lane "$LANE" "$DIR" "$(cat "$FACTORY/lanes/${LANE}.md")"$'\n'"$HARD" "Implement GitHub issue $(issue_url "$ISSUE") in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."
+    exit $?
     ;;
   bug)
     need_issue
@@ -576,7 +743,8 @@ case "$LANE" in
   review)
     need_pr
     DIR="$(repo_dir)"
-    run_agent "$DIR" "$(cat "$FACTORY/lanes/review.md")"$'\n'"$HARD"       "Review $(pr_url "$PR") only. Use /thermo-nuclear-code-quality-review. Do not implement. Do not merge."
+    run_mem_lane review "$DIR" "$(cat "$FACTORY/lanes/review.md")"$'\n'"$HARD" "Review $(pr_url "$PR") only. Use /thermo-nuclear-code-quality-review. Do not implement. Do not merge."
+    exit $?
     ;;
   ci)
     need_pr
@@ -585,9 +753,11 @@ case "$LANE" in
     command -v gh >/dev/null 2>&1 || { echo "gh not installed" >&2; exit 1; }
     echo "Checks before:"
     gh pr checks "$PR" -R "${OWNER}/${REPO}" || true
-    run_agent "$DIR" "$(cat "$FACTORY/lanes/ci.md")"$'\n'"$HARD"       "Watch $(pr_url "$PR") with gh pr checks until green. Fix failures on this branch. Do not merge."
+    run_mem_lane ci "$DIR" "$(cat "$FACTORY/lanes/ci.md")"$'\n'"$HARD" "Watch $(pr_url "$PR") with gh pr checks until green. Fix failures on this branch. Do not merge."
+    code=$?
     echo "Checks after:"
     gh pr checks "$PR" -R "${OWNER}/${REPO}" || true
+    exit "$code"
     ;;
   ship)
     need_issue
@@ -611,7 +781,8 @@ case "$LANE" in
     ;;
   telemetry)
     need_question
-    run_agent "$WORKSPACE" "$(cat "$FACTORY/lanes/telemetry.md")"$'\n'"$HARD"$'\n'"$(cat "$FACTORY/telemetry/CONTRACT.md")"       "Answer this with evidence only: ${QUESTION}. Name the adapter you used. Do not implement product code. Do not merge."
+    run_mem_lane telemetry "$WORKSPACE" "$(cat "$FACTORY/lanes/telemetry.md")"$'\n'"$HARD"$'\n'"$(cat "$FACTORY/telemetry/CONTRACT.md")" "Answer this with evidence only: ${QUESTION}. Name the adapter you used. Do not implement product code. Do not merge."
+    exit $?
     ;;
   qa)
     [[ -n "$URL" || -n "$PR" ]] || { echo "Need --url <app> or --pr <n>" >&2; exit 1; }
@@ -620,7 +791,8 @@ case "$LANE" in
     else
       DIR="$WORKSPACE"
     fi
-    run_agent "$DIR" "$(cat "$FACTORY/lanes/qa.md")"$'\n'"$HARD"       "QA the running app. URL: ${URL:-from the PR / local}. PR: ${PR:-none}. Prefer /run-smoke-tests if a suite exists, else /browser-use. Report only. Do not implement. Do not merge."
+    run_mem_lane qa "$DIR" "$(cat "$FACTORY/lanes/qa.md")"$'\n'"$HARD" "QA the running app. URL: ${URL:-from the PR / local}. PR: ${PR:-none}. Prefer /run-smoke-tests if a suite exists, else /browser-use. Report only. Do not implement. Do not merge."
+    exit $?
     ;;
   *)
     usage
