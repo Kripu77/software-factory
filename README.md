@@ -73,7 +73,11 @@ Headless / CI still uses the script (never merges):
 ./factory.sh telemetry --question "login 500s last 24h"
 ./factory.sh telemetry --question "where does onboarding die, last 7d"
 ./factory.sh qa --repo frontend --pr 12 --url http://localhost:3000
+./factory.sh mem write --lane feature --status started --issue 12 --harness grok --summary "Add the memory store"
+./factory.sh mem read --issue 12
 ```
+
+Lane runs on this machine are stored in `~/.factory/memory/factory.db`. Not git. GitHub comments stay the public ledger.
 
 ## Hard rules
 
