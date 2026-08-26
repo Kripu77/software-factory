@@ -602,7 +602,12 @@ case "$LANE" in
     ;;
   lead|tech-lead|cto)
     need_issue
-    run_agent "$WORKSPACE" "$(cat "$FACTORY/lanes/tech-lead.md")"$'\n'"$HARD"       "Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}."
+    bug_mem_start
+    prompt="Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}."
+    if [[ -n "${MEM_CONTEXT:-}" ]]; then
+      prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
+    fi
+    run_agent "$WORKSPACE" "$(cat "$FACTORY/lanes/tech-lead.md")"$'\n'"$HARD" "$prompt"
     ;;
   telemetry)
     need_question
