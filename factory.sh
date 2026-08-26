@@ -41,13 +41,6 @@ LANE="${1:-}"
 [[ -n "$LANE" ]] || usage
 shift || usage
 MEM_CMD=""
-if [[ "$LANE" == "mem" ]]; then
-  MEM_CMD="${1:-}"
-  case "$MEM_CMD" in
-    read|write) shift ;;
-    *) usage ;;
-  esac
-fi
 REPO=""
 ISSUE=""
 PR=""
@@ -63,30 +56,45 @@ NEXT_STEPS=""
 EVIDENCE=""
 LIMIT=""
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --repo) REPO="${2:-}"; shift 2 ;;
-    --issue) ISSUE="${2:-}"; shift 2 ;;
-    --pr) PR="${2:-}"; shift 2 ;;
-    --url) URL="${2:-}"; shift 2 ;;
-    --owner) OWNER="${2:-}"; shift 2 ;;
-    --runner) RUNNER="${2:-}"; shift 2 ;;
-    --harness) HARNESS="${2:-}"; shift 2 ;;
-    --lane) RUN_LANE="${2:-}"; shift 2 ;;
-    --project) PROJECT="${2:-}"; shift 2 ;;
-    --status) STATUS="${2:-}"; shift 2 ;;
-    --summary) SUMMARY="${2:-}"; shift 2 ;;
-    --next-steps) NEXT_STEPS="${2:-}"; shift 2 ;;
-    --evidence) EVIDENCE="${2:-}"; shift 2 ;;
-    --limit) LIMIT="${2:-}"; shift 2 ;;
-    --question) QUESTION="${2:-}"; shift 2 ;;
-    --yes) YES=1; shift ;;
-    -h|--help) usage ;;
-    *) echo "Unknown arg: $1" >&2; usage ;;
+if [[ "$LANE" == "mem" ]]; then
+  MEM_CMD="${1:-}"
+  case "$MEM_CMD" in
+    read|write) shift ;;
+    *) usage ;;
   esac
-done
-
-if [[ "$LANE" != "mem" ]]; then
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --issue) ISSUE="${2:-}"; shift 2 ;;
+      --pr) PR="${2:-}"; shift 2 ;;
+      --owner) OWNER="${2:-}"; shift 2 ;;
+      --repo) REPO="${2:-}"; shift 2 ;;
+      --runner|--harness) HARNESS="${2:-}"; shift 2 ;;
+      --lane) RUN_LANE="${2:-}"; shift 2 ;;
+      --project) PROJECT="${2:-}"; shift 2 ;;
+      --status) STATUS="${2:-}"; shift 2 ;;
+      --summary) SUMMARY="${2:-}"; shift 2 ;;
+      --next-steps) NEXT_STEPS="${2:-}"; shift 2 ;;
+      --evidence) EVIDENCE="${2:-}"; shift 2 ;;
+      --limit) LIMIT="${2:-}"; shift 2 ;;
+      -h|--help) usage ;;
+      *) echo "Unknown arg: $1" >&2; usage ;;
+    esac
+  done
+else
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --repo) REPO="${2:-}"; shift 2 ;;
+      --issue) ISSUE="${2:-}"; shift 2 ;;
+      --pr) PR="${2:-}"; shift 2 ;;
+      --url) URL="${2:-}"; shift 2 ;;
+      --owner) OWNER="${2:-}"; shift 2 ;;
+      --runner) RUNNER="${2:-}"; shift 2 ;;
+      --question) QUESTION="${2:-}"; shift 2 ;;
+      --yes) YES=1; shift ;;
+      -h|--help) usage ;;
+      *) echo "Unknown arg: $1" >&2; usage ;;
+    esac
+  done
   detect_runner
 fi
 
@@ -187,8 +195,9 @@ memory_init() {
   db="$(memory_db)"
   mkdir -p "$(dirname "$db")"
   need_sqlite
-  sqlite3 "$db" "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;" >/dev/null
-  sqlite3 "$db" <<'SQL'
+  sqlite3 "$db" >/dev/null <<'SQL'
+PRAGMA journal_mode=WAL;
+PRAGMA busy_timeout=5000;
 CREATE TABLE IF NOT EXISTS schema_versions (
   id INTEGER PRIMARY KEY,
   version INTEGER UNIQUE NOT NULL,
@@ -218,21 +227,113 @@ VALUES (1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'));
 SQL
 }
 
+sqlite_tx() {
+  local db="$1"
+  sqlite3 "$db" <<SQL
+.output /dev/null
+PRAGMA busy_timeout=5000;
+.output stdout
+BEGIN IMMEDIATE;
+$2
+COMMIT;
+SQL
+}
+
+owner_name() {
+  [[ "$1" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]
+}
+
+project_from_remote() {
+  local raw="$1"
+  local project
+  [[ -n "$raw" ]] || { echo "Need --project owner/name" >&2; exit 1; }
+  if owner_name "$raw"; then
+    PROJECT="$raw"
+    return
+  fi
+  project="$(printf '%s' "$raw" | sed -E -e 's#^[a-zA-Z0-9+.-]+://##' -e 's#^.*@##' -e 's#^[^:/]+(:[0-9]+)?[:/]##' -e 's#\.git$##' -e 's#/$##')"
+  owner_name "$project" || { echo "Need --project owner/name" >&2; exit 1; }
+  PROJECT="$project"
+}
+
 detect_project() {
-  if [[ -n "${PROJECT:-}" ]]; then
-    return
+  if [[ -z "${PROJECT:-}" ]]; then
+    if [[ -n "$OWNER" && -n "$REPO" ]]; then
+      PROJECT="$OWNER/$REPO"
+    else
+      local url=""
+      url="$(git -C "$WORKSPACE" remote get-url origin 2>/dev/null || true)"
+      if [[ -z "$url" ]]; then
+        url="$(git remote get-url origin 2>/dev/null || true)"
+      fi
+      [[ -n "$url" ]] || { echo "Need --project owner/name" >&2; exit 1; }
+      PROJECT="$url"
+    fi
   fi
-  if [[ -n "$OWNER" && -n "$REPO" ]]; then
-    PROJECT="$OWNER/$REPO"
-    return
+  project_from_remote "$PROJECT"
+}
+
+looks_like_secret() {
+  local s="$1"
+  case "$s" in
+    *-----BEGIN*|*"BEGIN PEM"*|*ghp_*|*gho_*|*ghu_*|*ghs_*|*ghr_*|*github_pat_*|*xoxb-*|*xoxp-*|*xoxa-*|*xoxs-*|*sk-ant-*|*password=*|*token=*|*api_key=*|*secret=*) return 0 ;;
+  esac
+  if printf '%s' "$s" | grep -Eq 'AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{20,}'; then
+    return 0
   fi
-  local url=""
-  url="$(git -C "$WORKSPACE" remote get-url origin 2>/dev/null || true)"
-  if [[ -z "$url" ]]; then
-    url="$(git remote get-url origin 2>/dev/null || true)"
-  fi
-  [[ -n "$url" ]] || { echo "Need --project owner/name" >&2; exit 1; }
-  PROJECT="$(printf '%s' "$url" | sed -E -e 's#^[a-zA-Z0-9+.-]+://##' -e 's#^git@##' -e 's#^[^:/]+[:/]##' -e 's#\.git$##')"
+  return 1
+}
+
+is_url_or_path() {
+  local s="$1"
+  [[ -n "$s" ]] || return 1
+  case "$s" in
+    *$'\n'*|*$'\r'*|*' '*) return 1 ;;
+  esac
+  case "$s" in
+    http://*|https://*|/*|./*|../*|*/*) return 0 ;;
+  esac
+  return 1
+}
+
+validate_summary() {
+  [[ -n "${SUMMARY:-}" ]] || return 0
+  looks_like_secret "$SUMMARY" && { echo "Refusing secret in mem write" >&2; exit 1; }
+  [[ "$SUMMARY" != *$'\n'* && "$SUMMARY" != *$'\r'* ]] || { echo "Need one-sentence --summary" >&2; exit 1; }
+  [[ ${#SUMMARY} -le 200 ]] || { echo "Need one-sentence --summary" >&2; exit 1; }
+  case "$SUMMARY" in
+    *'. '*|*'? '*|*'! '*) echo "Need one-sentence --summary" >&2; exit 1 ;;
+  esac
+}
+
+validate_next_steps() {
+  [[ -n "${NEXT_STEPS:-}" ]] || return 0
+  looks_like_secret "$NEXT_STEPS" && { echo "Refusing secret in mem write" >&2; exit 1; }
+  [[ "$NEXT_STEPS" != *$'\n'* && "$NEXT_STEPS" != *$'\r'* ]] || { echo "Need one-line --next-steps" >&2; exit 1; }
+}
+
+validate_evidence_items() {
+  local remain="$1"
+  local item
+  remain="${remain#"${remain%%[![:space:]]*}"}"
+  remain="${remain%"${remain##*[![:space:]]}"}"
+  [[ -n "$remain" ]] || return 0
+  while [[ -n "$remain" ]]; do
+    remain="${remain#"${remain%%[![:space:]]*}"}"
+    [[ "$remain" == \"* ]] || { echo "Need --evidence URL or path" >&2; exit 1; }
+    remain="${remain#\"}"
+    [[ "$remain" == *\"* ]] || { echo "Need --evidence URL or path" >&2; exit 1; }
+    item="${remain%%\"*}"
+    remain="${remain#*\"}"
+    looks_like_secret "$item" && { echo "Refusing secret in mem write" >&2; exit 1; }
+    is_url_or_path "$item" || { echo "Need --evidence URL or path" >&2; exit 1; }
+    remain="${remain#"${remain%%[![:space:]]*}"}"
+    if [[ "$remain" == ,* ]]; then
+      remain="${remain#,}"
+      continue
+    fi
+    [[ -z "$remain" ]] || { echo "Need --evidence URL or path" >&2; exit 1; }
+  done
 }
 
 normalize_evidence() {
@@ -240,10 +341,26 @@ normalize_evidence() {
     EVIDENCE='[]'
     return
   fi
-  if [[ "$EVIDENCE" == \[* ]]; then
+  looks_like_secret "$EVIDENCE" && { echo "Refusing secret in mem write" >&2; exit 1; }
+  [[ "$EVIDENCE" != *$'\n'* && "$EVIDENCE" != *$'\r'* ]] || { echo "Need --evidence URL or path" >&2; exit 1; }
+  if [[ "$EVIDENCE" == "[]" ]]; then
     return
   fi
+  if [[ "$EVIDENCE" == \[* ]]; then
+    [[ "$EVIDENCE" == *\] ]] || { echo "Need --evidence URL or path" >&2; exit 1; }
+    local inner="${EVIDENCE#\[}"
+    inner="${inner%\]}"
+    validate_evidence_items "$inner"
+    return
+  fi
+  is_url_or_path "$EVIDENCE" || { echo "Need --evidence URL or path" >&2; exit 1; }
   EVIDENCE="[$(json_quote "$EVIDENCE")]"
+}
+
+validate_payload() {
+  validate_summary
+  validate_next_steps
+  normalize_evidence
 }
 
 mem_read() {
@@ -276,7 +393,7 @@ mem_read() {
 }
 
 mem_write() {
-  local db now epoch open_id id completed_at completed_epoch
+  local db now epoch id completed_at completed_epoch sql
   [[ -n "${RUN_LANE:-}" ]] || { echo "Need --lane <lane>" >&2; exit 1; }
   case "${STATUS:-}" in
     started|done|blocked|failed) ;;
@@ -288,28 +405,48 @@ mem_write() {
     *) echo "Need --harness claude|cursor|codex|grok" >&2; exit 1 ;;
   esac
   detect_project
-  normalize_evidence
+  validate_payload
   memory_init
   db="$(memory_db)"
   now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   epoch="$(date +%s)"
-  open_id=""
   if [[ "$STATUS" != "started" && -n "$ISSUE" ]]; then
-    open_id="$(sqlite3 "$db" "SELECT id FROM runs WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE") AND status = 'started' ORDER BY started_at_epoch DESC, id DESC LIMIT 1")"
-  fi
-  if [[ -n "$open_id" ]]; then
-    sqlite3 "$db" "UPDATE runs SET status = $(sql_quote "$STATUS"), summary = COALESCE($(sql_nullable "$SUMMARY"), summary), next_steps = COALESCE($(sql_nullable "$NEXT_STEPS"), next_steps), evidence = CASE WHEN $(sql_quote "$EVIDENCE") = '[]' THEN evidence ELSE $(sql_quote "$EVIDENCE") END, pr = COALESCE($(sql_nullable "$PR"), pr), completed_at = $(sql_quote "$now"), completed_at_epoch = $epoch WHERE id = $open_id"
-    echo "id=$open_id status=$STATUS"
-    return
-  fi
-  if [[ "$STATUS" == "started" ]]; then
-    completed_at="NULL"
-    completed_epoch="NULL"
+    sql="
+UPDATE runs SET
+  status = $(sql_quote "$STATUS"),
+  summary = COALESCE($(sql_nullable "$SUMMARY"), summary),
+  next_steps = COALESCE($(sql_nullable "$NEXT_STEPS"), next_steps),
+  evidence = CASE WHEN $(sql_quote "$EVIDENCE") = '[]' THEN evidence ELSE $(sql_quote "$EVIDENCE") END,
+  pr = COALESCE($(sql_nullable "$PR"), pr),
+  completed_at = $(sql_quote "$now"),
+  completed_at_epoch = $epoch
+WHERE id = (
+  SELECT id FROM runs
+  WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE") AND status = 'started'
+  ORDER BY started_at_epoch DESC, id DESC
+  LIMIT 1
+);
+INSERT INTO runs (harness, lane, project, issue, pr, status, summary, next_steps, evidence, started_at, started_at_epoch, completed_at, completed_at_epoch)
+SELECT $(sql_quote "$HARNESS"), $(sql_quote "$RUN_LANE"), $(sql_quote "$PROJECT"), $(sql_nullable "$ISSUE"), $(sql_nullable "$PR"), $(sql_quote "$STATUS"), $(sql_nullable "$SUMMARY"), $(sql_nullable "$NEXT_STEPS"), $(sql_quote "$EVIDENCE"), $(sql_quote "$now"), $epoch, $(sql_quote "$now"), $epoch
+WHERE changes() = 0;
+SELECT COALESCE(
+  (SELECT last_insert_rowid() WHERE last_insert_rowid() != 0 AND changes() != 0),
+  (SELECT id FROM runs WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE") AND completed_at_epoch = $epoch ORDER BY id DESC LIMIT 1)
+);"
   else
-    completed_at="$(sql_quote "$now")"
-    completed_epoch="$epoch"
+    if [[ "$STATUS" == "started" ]]; then
+      completed_at="NULL"
+      completed_epoch="NULL"
+    else
+      completed_at="$(sql_quote "$now")"
+      completed_epoch="$epoch"
+    fi
+    sql="
+INSERT INTO runs (harness, lane, project, issue, pr, status, summary, next_steps, evidence, started_at, started_at_epoch, completed_at, completed_at_epoch)
+VALUES ($(sql_quote "$HARNESS"), $(sql_quote "$RUN_LANE"), $(sql_quote "$PROJECT"), $(sql_nullable "$ISSUE"), $(sql_nullable "$PR"), $(sql_quote "$STATUS"), $(sql_nullable "$SUMMARY"), $(sql_nullable "$NEXT_STEPS"), $(sql_quote "$EVIDENCE"), $(sql_quote "$now"), $epoch, $completed_at, $completed_epoch);
+SELECT last_insert_rowid();"
   fi
-  id="$(sqlite3 "$db" "INSERT INTO runs (harness, lane, project, issue, pr, status, summary, next_steps, evidence, started_at, started_at_epoch, completed_at, completed_at_epoch) VALUES ($(sql_quote "$HARNESS"), $(sql_quote "$RUN_LANE"), $(sql_quote "$PROJECT"), $(sql_nullable "$ISSUE"), $(sql_nullable "$PR"), $(sql_quote "$STATUS"), $(sql_nullable "$SUMMARY"), $(sql_nullable "$NEXT_STEPS"), $(sql_quote "$EVIDENCE"), $(sql_quote "$now"), $epoch, $completed_at, $completed_epoch); SELECT last_insert_rowid();")"
+  id="$(sqlite_tx "$db" "$sql")"
   echo "id=$id status=$STATUS"
 }
 
