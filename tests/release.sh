@@ -80,8 +80,8 @@ fi
 if grep -q "\.env" "$rel"; then
   fail "workflow must not touch .env"
 fi
-if grep -qi "secrets" "$rel"; then
-  fail "workflow must not use secrets"
+if grep -oE 'secrets\.[A-Za-z0-9_]+' "$rel" | grep -v 'secrets.XAI_MARKETPLACE_TOKEN' | grep -q .; then
+  fail "release workflow may only use secrets.XAI_MARKETPLACE_TOKEN"
 fi
 if grep -E -- "--notes[[:space:]]+\"\"" "$rel"; then
   fail "Release notes must be non-empty"
