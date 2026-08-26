@@ -498,23 +498,9 @@ WHERE id = (
   ORDER BY started_at_epoch DESC, id DESC
   LIMIT 1
 );
-CREATE TEMP TABLE _mem_hit AS SELECT changes() AS n;"
-    if [[ -n "$PR" ]]; then
-      sql+="
-UPDATE runs SET pr = $(sql_quote "$PR")
-WHERE (SELECT n FROM _mem_hit) = 0 AND (pr IS NULL OR pr = '') AND id = (
-  SELECT id FROM (
-    SELECT id FROM runs
-    WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE")
-    ORDER BY started_at_epoch DESC, id DESC
-    LIMIT 1
-  )
-);"
-    fi
-    sql+="
 INSERT INTO runs (harness, lane, project, issue, pr, status, summary, next_steps, evidence, started_at, started_at_epoch, completed_at, completed_at_epoch)
 SELECT $(sql_quote "$HARNESS"), $(sql_quote "$RUN_LANE"), $(sql_quote "$PROJECT"), $(sql_nullable "$ISSUE"), $(sql_nullable "$PR"), $(sql_quote "$STATUS"), $(sql_nullable "$SUMMARY"), $(sql_nullable "$NEXT_STEPS"), $(sql_quote "$EVIDENCE"), $(sql_quote "$now"), $epoch, $(sql_quote "$now"), $epoch
-WHERE (SELECT n FROM _mem_hit) = 0 AND changes() = 0;
+WHERE changes() = 0;
 SELECT COALESCE(
   (SELECT last_insert_rowid() WHERE last_insert_rowid() != 0 AND changes() != 0),
   (SELECT id FROM runs WHERE issue = $(sql_quote "$ISSUE") AND lane = $(sql_quote "$RUN_LANE") ORDER BY id DESC LIMIT 1)
