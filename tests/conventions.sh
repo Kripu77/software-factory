@@ -49,11 +49,28 @@ run_lane() {
     "$FACTORY" "$lane" --repo widgets --issue 6 >/dev/null 2>&1
 }
 
+run_review() {
+  PATH="$TMP/bin:$PATH" \
+    FAKE_DUMP="$DUMP" \
+    FACTORY_WORKSPACE="$WS" \
+    FACTORY_OWNER=acme \
+    FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
+    "$FACTORY" review --repo widgets --pr 6 >/dev/null 2>&1
+}
+
 # Missing conventions file: the generic skill-check instruction is still injected
 run_lane feature
 [[ -f "$DUMP/rules" ]] || fail "feature should run without conventions file"
 grep -q "Check for relevant skills before writing code" "$DUMP/rules" || fail "missing file must still inject the generic skill-check instruction"
 grep -q "This repo enables these skills" "$DUMP/rules" && fail "missing file must not inject a skill list"
+
+# Missing conventions file: review rules get no conventions injection at all
+rm -rf "$DUMP"
+mkdir -p "$DUMP"
+run_review
+[[ -f "$DUMP/rules" ]] || fail "review should run without conventions file"
+grep -q "This repo enables these skills" "$DUMP/rules" && fail "review must not get a skill list without a conventions file"
+grep -q "Check for relevant skills before writing code" "$DUMP/rules" && fail "review must not get the implementing-lane instruction"
 
 # Conventions file: skill entries with context and repo context reach every implementing lane
 mkdir -p "$WS/widgets/.factory"
@@ -73,6 +90,21 @@ for lane in feature bug docs; do
   grep -qi "invoke" "$DUMP/rules" || fail "$lane rules missing invoke instruction"
   grep -q "tooling notes" "$DUMP/rules" && fail "$lane rules must not include comment lines"
 done
+
+# Conventions file: the review lane gets the skill list and flags violations as comments
+rm -rf "$DUMP"
+mkdir -p "$DUMP"
+run_review
+grep -q "/go-style: services and migrations" "$DUMP/rules" || fail "review rules missing go-style with its context"
+grep -q "/web-style: web frontends" "$DUMP/rules" || fail "review rules missing web-style with its context"
+grep -q "never add jest tests; never raw HTML" "$DUMP/rules" || fail "review rules missing repo context line"
+grep -q "review comment" "$DUMP/rules" || fail "review rules missing flag-as-comment instruction"
+grep -q "Check for relevant skills before writing code" "$DUMP/rules" && fail "review rules must not carry the implementing-lane instruction"
+grep -q "tooling notes" "$DUMP/rules" && fail "review rules must not include comment lines"
+
+# The review lane playbook tells the reviewer to enforce listed conventions
+grep -qi "invoke" "$ROOT/lanes/review.md" || fail "review.md missing invoke instruction"
+grep -qi "convention" "$ROOT/lanes/review.md" || fail "review.md missing conventions instruction"
 
 # Reading the file excludes .factory/ from source control
 grep -qxF ".factory/" "$WS/widgets/.git/info/exclude" || fail ".factory/ missing from .git/info/exclude"

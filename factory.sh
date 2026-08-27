@@ -169,7 +169,7 @@ repo_dir() {
 }
 
 conventions_rules() {
-  local dir="$1" file="$1/.factory/conventions" line skills="" context=""
+  local dir="$1" lane="${2:-implement}" file="$1/.factory/conventions" line skills="" context=""
   if [[ -f "$file" ]]; then
     if [[ -d "$dir/.git" ]] && ! grep -qxF '.factory/' "$dir/.git/info/exclude" 2>/dev/null; then
       mkdir -p "$dir/.git/info"
@@ -188,8 +188,15 @@ conventions_rules() {
       fi
     done < "$file"
   fi
-  local out='Check for relevant skills before writing code and follow their conventions.'
-  [[ -z "$skills" ]] || out+=$'\n'"This repo enables these skills; invoke each one that applies before writing code:$skills"
+  local out
+  if [[ "$lane" == review ]]; then
+    [[ -n "$skills" || -n "$context" ]] || return 0
+    out='Check the diff against this repo'\''s conventions and flag every violation as a review comment.'
+    [[ -z "$skills" ]] || out+=$'\n'"This repo enables these skills; invoke each one that applies to the diff:$skills"
+  else
+    out='Check for relevant skills before writing code and follow their conventions.'
+    [[ -z "$skills" ]] || out+=$'\n'"This repo enables these skills; invoke each one that applies before writing code:$skills"
+  fi
   [[ -z "$context" ]] || out+=$'\n'"Repo context:$context"
   printf '%s\n' "$out"
 }
@@ -970,7 +977,10 @@ case "$LANE" in
   review)
     need_pr
     DIR="$(repo_dir)"
-    run_mem_lane review "$DIR" "$(cat "$FACTORY/lanes/review.md")"$'\n'"$HARD" "Review $(pr_url "$PR") only. Use /thermo-nuclear-code-quality-review. Do not implement. Do not merge."
+    RULES="$(cat "$FACTORY/lanes/review.md")"$'\n'"$HARD"
+    CONVENTIONS="$(conventions_rules "$DIR" review)"
+    [[ -z "$CONVENTIONS" ]] || RULES+=$'\n'"$CONVENTIONS"
+    run_mem_lane review "$DIR" "$RULES" "Review $(pr_url "$PR") only. Use /thermo-nuclear-code-quality-review. Do not implement. Do not merge."
     exit $?
     ;;
   ci)
