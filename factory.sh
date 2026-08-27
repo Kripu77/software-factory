@@ -168,6 +168,32 @@ repo_dir() {
   fi
 }
 
+conventions_rules() {
+  local dir="$1" file="$1/.factory/conventions" line skills="" context=""
+  if [[ -f "$file" ]]; then
+    if [[ -d "$dir/.git" ]] && ! grep -qxF '.factory/' "$dir/.git/info/exclude" 2>/dev/null; then
+      mkdir -p "$dir/.git/info"
+      printf '.factory/\n' >> "$dir/.git/info/exclude"
+    fi
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      line="${line#"${line%%[![:space:]]*}"}"
+      line="${line%"${line##*[![:space:]]}"}"
+      [[ -n "$line" && "$line" != \#* ]] || continue
+      if [[ "$line" =~ ^([^[:space:]]+):[[:space:]]+(.+)$ ]]; then
+        skills+=$'\n'"- /${BASH_REMATCH[1]}: ${BASH_REMATCH[2]}"
+      elif [[ "$line" != *[[:space:]]* ]]; then
+        skills+=$'\n'"- /$line"
+      else
+        context+=$'\n'"- $line"
+      fi
+    done < "$file"
+  fi
+  local out='Check for relevant skills before writing code and follow their conventions.'
+  [[ -z "$skills" ]] || out+=$'\n'"This repo enables these skills; invoke each one that applies before writing code:$skills"
+  [[ -z "$context" ]] || out+=$'\n'"Repo context:$context"
+  printf '%s\n' "$out"
+}
+
 run_agent() {
   local cwd="$1"
   local rules="$2"
@@ -935,7 +961,10 @@ case "$LANE" in
   feature|bug|docs)
     need_issue
     DIR="$(repo_dir)"
-    run_mem_lane "$LANE" "$DIR" "$(cat "$FACTORY/lanes/${LANE}.md")"$'\n'"$HARD" "Implement GitHub issue $(issue_url "$ISSUE") in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."
+    RULES="$(cat "$FACTORY/lanes/${LANE}.md")"$'\n'"$HARD"
+    CONVENTIONS="$(conventions_rules "$DIR")"
+    [[ -z "$CONVENTIONS" ]] || RULES+=$'\n'"$CONVENTIONS"
+    run_mem_lane "$LANE" "$DIR" "$RULES" "Implement GitHub issue $(issue_url "$ISSUE") in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."
     exit $?
     ;;
   review)
