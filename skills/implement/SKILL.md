@@ -24,6 +24,9 @@ gh api graphql -f query='query($owner:String!,$name:String!,$pr:Int!){repository
 
 # Resolve one addressed thread
 gh api graphql -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}' -F id=<thread-id>
+
+# Reply to a skipped or disputed thread (leave unresolved)
+gh api graphql -f query='mutation($id:ID!,$body:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$id,body:$body}){comment{url}}}' -F id=<thread-id> -f body='<why skipped or disputed>'
 ```
 
 ## Extra rules

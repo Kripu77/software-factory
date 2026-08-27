@@ -13,6 +13,6 @@ need_text() {
 need_text skills/implement/SKILL.md "resolveReviewThread"
 need_text skills/implement/SKILL.md "reviewThreads"
 need_text skills/implement/SKILL.md "unresolved"
-need_text skills/implement/SKILL.md "reply"
+need_text skills/implement/SKILL.md "addPullRequestReviewThreadReply"
 
 echo "ok review-threads"
