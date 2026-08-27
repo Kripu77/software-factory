@@ -169,19 +169,29 @@ repo_dir() {
 }
 
 conventions_rules() {
-  local dir="$1" file="$1/.factory/conventions" line skills=""
-  [[ -f "$file" ]] || return 0
-  if [[ -d "$dir/.git" ]] && ! grep -qxF '.factory/' "$dir/.git/info/exclude" 2>/dev/null; then
-    mkdir -p "$dir/.git/info"
-    printf '.factory/\n' >> "$dir/.git/info/exclude"
+  local dir="$1" file="$1/.factory/conventions" line skills="" context=""
+  if [[ -f "$file" ]]; then
+    if [[ -d "$dir/.git" ]] && ! grep -qxF '.factory/' "$dir/.git/info/exclude" 2>/dev/null; then
+      mkdir -p "$dir/.git/info"
+      printf '.factory/\n' >> "$dir/.git/info/exclude"
+    fi
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      line="${line#"${line%%[![:space:]]*}"}"
+      line="${line%"${line##*[![:space:]]}"}"
+      [[ -n "$line" && "$line" != \#* ]] || continue
+      if [[ "$line" =~ ^([^[:space:]]+):[[:space:]]+(.+)$ ]]; then
+        skills+=$'\n'"- /${BASH_REMATCH[1]}: ${BASH_REMATCH[2]}"
+      elif [[ "$line" != *[[:space:]]* ]]; then
+        skills+=$'\n'"- /$line"
+      else
+        context+=$'\n'"- $line"
+      fi
+    done < "$file"
   fi
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    line="${line//[[:space:]]/}"
-    [[ -n "$line" ]] || continue
-    skills="${skills:+$skills, }/$line"
-  done < "$file"
-  [[ -n "$skills" ]] || return 0
-  printf 'This repo has conventions. Before writing code invoke each of these skills and follow its conventions: %s.\n' "$skills"
+  local out='Check for relevant skills before writing code and follow their conventions.'
+  [[ -z "$skills" ]] || out+=$'\n'"This repo enables these skills; invoke each one that applies before writing code:$skills"
+  [[ -z "$context" ]] || out+=$'\n'"Repo context:$context"
+  printf '%s\n' "$out"
 }
 
 run_agent() {

@@ -49,21 +49,29 @@ run_lane() {
     "$FACTORY" "$lane" --repo widgets --issue 6 >/dev/null 2>&1
 }
 
-# Missing conventions file: lane runs, rules untouched
+# Missing conventions file: the generic skill-check instruction is still injected
 run_lane feature
 [[ -f "$DUMP/rules" ]] || fail "feature should run without conventions file"
-grep -q "conventions" "$DUMP/rules" && fail "no conventions file must not inject conventions rule"
+grep -q "Check for relevant skills before writing code" "$DUMP/rules" || fail "missing file must still inject the generic skill-check instruction"
+grep -q "This repo enables these skills" "$DUMP/rules" && fail "missing file must not inject a skill list"
 
-# Conventions file: each lane gets a must-invoke instruction with every listed skill
+# Conventions file: skill entries with context and repo context reach every implementing lane
 mkdir -p "$WS/widgets/.factory"
-printf 'euc-go\neuc-react-native\n' > "$WS/widgets/.factory/conventions"
+cat > "$WS/widgets/.factory/conventions" << 'CONV'
+# tooling notes
+go-style: services and migrations
+web-style: web frontends
+never add jest tests; never raw HTML
+CONV
 for lane in feature bug docs; do
   rm -rf "$DUMP"
   mkdir -p "$DUMP"
   run_lane "$lane"
-  grep -q "euc-go" "$DUMP/rules" || fail "$lane rules missing euc-go"
-  grep -q "euc-react-native" "$DUMP/rules" || fail "$lane rules missing euc-react-native"
+  grep -q "/go-style: services and migrations" "$DUMP/rules" || fail "$lane rules missing go-style with its context"
+  grep -q "/web-style: web frontends" "$DUMP/rules" || fail "$lane rules missing web-style with its context"
+  grep -q "never add jest tests; never raw HTML" "$DUMP/rules" || fail "$lane rules missing repo context line"
   grep -qi "invoke" "$DUMP/rules" || fail "$lane rules missing invoke instruction"
+  grep -q "tooling notes" "$DUMP/rules" && fail "$lane rules must not include comment lines"
 done
 
 # Reading the file excludes .factory/ from source control
@@ -71,22 +79,23 @@ grep -qxF ".factory/" "$WS/widgets/.git/info/exclude" || fail ".factory/ missing
 run_lane feature
 [[ "$(grep -cxF '.factory/' "$WS/widgets/.git/info/exclude")" == "1" ]] || fail ".factory/ excluded more than once"
 
-# Blank lines are skipped
-printf '\neuc-sql\n\n' > "$WS/widgets/.factory/conventions"
+# Blank lines are skipped and a bare skill name needs no context
+printf '\nsql-style\n\n' > "$WS/widgets/.factory/conventions"
 rm -rf "$DUMP"
 mkdir -p "$DUMP"
 run_lane feature
-grep -q "euc-sql" "$DUMP/rules" || fail "rules missing euc-sql"
+grep -q "/sql-style" "$DUMP/rules" || fail "rules missing bare skill sql-style"
 
 # Empty file behaves like a missing file
 : > "$WS/widgets/.factory/conventions"
 rm -rf "$DUMP"
 mkdir -p "$DUMP"
 run_lane feature
-grep -q "conventions" "$DUMP/rules" && fail "empty conventions file must not inject conventions rule"
+grep -q "Check for relevant skills before writing code" "$DUMP/rules" || fail "empty file must still inject the generic skill-check instruction"
+grep -q "This repo enables these skills" "$DUMP/rules" && fail "empty conventions file must not inject a skill list"
 
 # README documents the file
 grep -q ".factory/conventions" "$ROOT/README.md" || fail "README missing .factory/conventions"
-grep -qi "one skill" "$ROOT/README.md" || fail "README missing one-skill-per-line format"
+grep -qi "repo context" "$ROOT/README.md" || fail "README missing repo-context format"
 
 echo "ok conventions"
