@@ -59,6 +59,10 @@ playbook() {
   fi
 }
 
+if grep -q "disable-model-invocation: true" "$ROOT/skills/thermo-nuclear-review/SKILL.md"; then
+  fail "review lane mandates /thermo-nuclear-code-quality-review but the skill blocks model invocation"
+fi
+
 playbook feature feature
 playbook docs docs
 playbook qa qa
