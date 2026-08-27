@@ -134,6 +134,7 @@ code=$?
 set -e
 [[ $code -eq 0 ]] || fail "missing db bug lane exit $code err=$(cat "$TMP/err")"
 [[ -f "$DUMP/ran" ]] || fail "missing db should still run the bug lane"
+grep -q "recently-merged example" "$DUMP/rules" || fail "bug rules missing ratify-off-example rule"
 warns="$(grep -c "factory.db\|factory memory" "$TMP/err" || true)"
 [[ "$warns" == "1" ]] || fail "missing db should warn once, got $warns: $(cat "$TMP/err")"
 [[ -f "$FACTORY_MEMORY_DB" ]] || fail "finish write should create db"

@@ -8,11 +8,12 @@ description: Use when implementing a spec or GitHub ticket in this checkout.
 Implement only the ticket you were given.
 
 1. Read CONTEXT-MAP, this repo CONTEXT.md, ADRs, docs/agents if they exist.
-2. Use `/tdd` at pre-agreed seams.
-3. Typecheck often. Run focused tests often. Full suite once at the end.
-4. `/unslop` against main.
-5. Open or update a PR. Do not merge.
-6. Stop and ask for `/thermo-nuclear-code-quality-review` then `/loop-on-ci`.
+2. Find a similar, recently-merged example in this repo (a file or PR doing the same kind of thing) and match its patterns. If none exists, say so in the PR description.
+3. Use `/tdd` at pre-agreed seams.
+4. Typecheck often. Run focused tests often. Full suite once at the end.
+5. `/unslop` against main.
+6. Open or update a PR. Do not merge.
+7. Stop and ask for `/thermo-nuclear-code-quality-review` then `/loop-on-ci`.
 
 ## Review feedback
 

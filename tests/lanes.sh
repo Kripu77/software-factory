@@ -238,6 +238,7 @@ code=$?
 set -e
 [[ $code -eq 0 ]] || fail "missing db feature exit $code err=$(cat "$TMP/err")"
 [[ -f "$DUMP/ran" ]] || fail "missing db should still run feature"
+grep -q "recently-merged example" "$DUMP/rules" || fail "feature rules missing ratify-off-example rule"
 warns="$(grep -c "factory.db\|factory memory" "$TMP/err" || true)"
 [[ "$warns" == "1" ]] || fail "missing db should warn once, got $warns: $(cat "$TMP/err")"
 status="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT status FROM runs WHERE lane = 'feature' ORDER BY id DESC LIMIT 1;")"
@@ -280,6 +281,7 @@ AGENT_LANE=review AGENT_PR=40 run_env "$FACTORY" review --repo widgets --pr 40 >
 rstatus="$(sqlite3 "$FACTORY_MEMORY_DB" "SELECT status FROM runs WHERE lane = 'review' ORDER BY id DESC LIMIT 1;")"
 [[ "$rstatus" == "done" ]] || fail "review finish should be done, got $rstatus"
 grep -q "pr comment 40" "$DUMP/gh" || fail "review finish should gh pr comment: $(cat "$DUMP/gh" 2>/dev/null || true)"
+grep -q "recently-merged example" "$DUMP/rules" || fail "review rules missing ratify-off-example rule"
 
 # Comment failure does not fail the lane
 rm -rf "$DUMP" "$TMP/memory"
