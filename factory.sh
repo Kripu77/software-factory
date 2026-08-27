@@ -16,6 +16,9 @@ Usage:
   factory.sh telemetry        --question "<what broke>" [--yes]
   factory.sh qa               --repo <name> --pr <n> [--url <app>]
   factory.sh qa               --url <app>
+  factory.sh config           [--repo <name>]  prints the current tracker and skills
+  factory.sh config tracker   github|linear [--team <linear-team-key>] [--repo <name>]
+  factory.sh config skills    "<skill-name>: <when it applies>" [more...] [--repo <name>]
   factory.sh mem read         [--issue <n>] [--pr <n>] [--project owner/name] [--limit n]
   factory.sh mem write        --lane <lane> --status started|done|blocked|failed [--harness claude|codex|cursor|grok] [--issue <n>] [--pr <n>] [--project owner/name] [--summary s] [--next-steps s] [--evidence url-or-json]
   factory.sh close-linked     --pr <n> [--repo name] [--owner org]
@@ -74,7 +77,31 @@ NEXT_STEPS=""
 EVIDENCE=""
 LIMIT=""
 
-if [[ "$LANE" == "mem" ]]; then
+CONFIG_CMD=""
+CONFIG_ARGS=()
+CONFIG_REPO_FLAG=""
+TEAM=""
+
+if [[ "$LANE" == "config" ]]; then
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --repo) REPO="${2:-}"; CONFIG_REPO_FLAG=1; shift 2 ;;
+      --team) TEAM="${2:-}"; shift 2 ;;
+      -h|--help) usage ;;
+      --*) echo "Unknown arg: $1" >&2; usage ;;
+      *)
+        if [[ -n "$CONFIG_CMD" ]]; then
+          CONFIG_ARGS+=("$1")
+        elif [[ "$1" == "tracker" || "$1" == "skills" ]]; then
+          CONFIG_CMD="$1"
+        else
+          echo "Unknown config command: $1" >&2
+          usage
+        fi
+        shift ;;
+    esac
+  done
+elif [[ "$LANE" == "mem" ]]; then
   MEM_CMD="${1:-}"
   case "$MEM_CMD" in
     read|write) shift ;;
@@ -168,13 +195,85 @@ repo_dir() {
   fi
 }
 
+config_dir() {
+  local top=""
+  if [[ -n "$CONFIG_REPO_FLAG" ]]; then
+    repo_dir
+    return 0
+  fi
+  top="$(git rev-parse --show-toplevel 2>/dev/null || git -C "$WORKSPACE" rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -n "$top" ]]; then
+    printf '%s\n' "$top"
+  else
+    echo "Need --repo <name> or a git checkout" >&2
+    exit 1
+  fi
+}
+
+factory_exclude() {
+  local dir="$1" exclude
+  exclude="$(git -C "$dir" rev-parse --git-path info/exclude 2>/dev/null)" || return 0
+  [[ "$exclude" == /* ]] || exclude="$dir/$exclude"
+  grep -qxF '.factory/' "$exclude" 2>/dev/null && return 0
+  mkdir -p "${exclude%/*}"
+  [[ ! -s "$exclude" || -z "$(tail -c1 "$exclude")" ]] || printf '\n' >> "$exclude"
+  printf '.factory/\n' >> "$exclude"
+}
+
+config_show() {
+  local dir="$1" tracker="github" team="" line
+  if [[ -f "$dir/.factory/config" ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      case "$line" in
+        tracker=*) tracker="${line#tracker=}" ;;
+        team=*) team="${line#team=}" ;;
+      esac
+    done < "$dir/.factory/config"
+  fi
+  printf 'tracker %s\n' "$tracker"
+  [[ -z "$team" ]] || printf 'team %s\n' "$team"
+  if [[ -s "$dir/.factory/conventions" ]]; then
+    printf 'skills:\n'
+    cat "$dir/.factory/conventions"
+  else
+    printf 'skills: none\n'
+  fi
+}
+
+config_tracker() {
+  local dir="$1" tracker="${2:-}"
+  case "$tracker" in
+    github) ;;
+    linear) [[ -n "$TEAM" ]] || { echo "Tracker linear needs --team <linear-team-key>" >&2; exit 1; } ;;
+    *) echo "Tracker must be github or linear" >&2; exit 1 ;;
+  esac
+  mkdir -p "$dir/.factory"
+  factory_exclude "$dir"
+  if [[ "$tracker" == linear ]]; then
+    printf 'tracker=linear\nteam=%s\n' "$TEAM" > "$dir/.factory/config"
+  else
+    printf 'tracker=github\n' > "$dir/.factory/config"
+  fi
+  config_show "$dir"
+}
+
+config_skills() {
+  local dir="$1" entry
+  shift
+  [[ $# -gt 0 ]] || { echo 'Need entries: factory.sh config skills "<skill-name>: <when it applies>" [more...]' >&2; exit 1; }
+  for entry in "$@"; do
+    [[ "$entry" == *": "* && "$entry" != *$'\n'* ]] || { echo "Skills entries are one line each: \"<skill-name>: <when it applies>\", got: $entry" >&2; exit 1; }
+  done
+  mkdir -p "$dir/.factory"
+  factory_exclude "$dir"
+  printf '%s\n' "$@" > "$dir/.factory/conventions"
+  config_show "$dir"
+}
+
 conventions_rules() {
   local dir="$1" file="$1/.factory/conventions" line skills="" context=""
   if [[ -f "$file" ]]; then
-    if [[ -d "$dir/.git" ]] && ! grep -qxF '.factory/' "$dir/.git/info/exclude" 2>/dev/null; then
-      mkdir -p "$dir/.git/info"
-      printf '.factory/\n' >> "$dir/.git/info/exclude"
-    fi
+    factory_exclude "$dir"
     while IFS= read -r line || [[ -n "$line" ]]; do
       line="${line#"${line%%[![:space:]]*}"}"
       line="${line%"${line##*[![:space:]]}"}"
@@ -957,6 +1056,17 @@ case "$LANE" in
     ;;
   close-linked)
     close_linked_issues
+    ;;
+  config)
+    DIR="$(config_dir)"
+    case "$CONFIG_CMD" in
+      tracker)
+        [[ ${#CONFIG_ARGS[@]} -le 1 ]] || { echo "config tracker takes one value: factory.sh config tracker <github|linear>" >&2; exit 1; }
+        config_tracker "$DIR" "${CONFIG_ARGS[0]:-}"
+        ;;
+      skills) config_skills "$DIR" ${CONFIG_ARGS[@]+"${CONFIG_ARGS[@]}"} ;;
+      *) config_show "$DIR" ;;
+    esac
     ;;
   feature|bug|docs)
     need_issue

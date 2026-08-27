@@ -142,7 +142,12 @@ Headless. Never merges.
 ./factory.sh qa --repo frontend --pr 12 --url http://localhost:3000
 ./factory.sh mem write --lane feature --status started --issue 12 --harness grok --summary "Add the memory store"
 ./factory.sh mem read --issue 12
+./factory.sh config tracker linear --team ABC
+./factory.sh config skills "euc-go: Go services" "euc-sql: migrations"
+./factory.sh config
 ```
+
+`factory.sh config` sets a checkout up for the factory without hand-editing files. `config tracker github|linear [--team <linear-team-key>]` stores the issue tracker in `.factory/config`; github is the default when no config exists, and linear requires a team key. `config skills "<skill-name>: <when it applies>" [more...]` replaces `.factory/conventions` with those entries, one per line. `config` with no arguments prints the current tracker and skills. It targets `--repo <name>` under the workspace, or the checkout you run it from. Both files live under `.factory/`, which factory.sh adds to the checkout's `.git/info/exclude` so they stay out of source control.
 
 `factory.sh ship` is an alias of `floor`. QA URL is `--url` or `FACTORY_QA_URL`. `--yes` is for workers. Lead stays interactive for quiz and for `blocked`.
 
