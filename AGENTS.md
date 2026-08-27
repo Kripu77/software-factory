@@ -23,6 +23,7 @@ Use glossary terms from `CONTEXT.md`. Do not invent synonyms. Missing `CONTEXT.m
 
 ## Shipping
 
+- Before writing code, find a similar, recently-merged example in this repo (a file or PR doing the same kind of thing) and match its patterns. If none exists, say so in the PR description.
 - New branch off `main`. Do not wreck other local branches or worktrees.
 - PR title: `Type/<issue.number>/<short description>` where Type is Feat, Bug, Arch, Chore, Refactor, or General.
 - PR description: human, at most 3 sentences. Reference the ticket. Do not `Closes` until every slice has landed.
