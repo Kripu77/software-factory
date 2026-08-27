@@ -146,6 +146,8 @@ Headless. Never merges.
 
 `factory.sh ship` is an alias of `floor`. QA URL is `--url` or `FACTORY_QA_URL`. `--yes` is for workers. Lead stays interactive for quiz and for `blocked`.
 
+Per-repo conventions: drop `.factory/conventions` in the target checkout, one skill name per line (any skill available to the runner, e.g. `euc-go`). Feature, bug, and docs lanes are told to invoke each listed skill before writing code. The file stays out of source control: factory.sh adds `.factory/` to the checkout's `.git/info/exclude` when it reads it.
+
 ## What this pack will not do
 
 A person still quizzes before tickets, logs in for a protected browser, and merges.

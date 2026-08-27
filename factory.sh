@@ -168,6 +168,22 @@ repo_dir() {
   fi
 }
 
+conventions_rules() {
+  local dir="$1" file="$1/.factory/conventions" line skills=""
+  [[ -f "$file" ]] || return 0
+  if [[ -d "$dir/.git" ]] && ! grep -qxF '.factory/' "$dir/.git/info/exclude" 2>/dev/null; then
+    mkdir -p "$dir/.git/info"
+    printf '.factory/\n' >> "$dir/.git/info/exclude"
+  fi
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line//[[:space:]]/}"
+    [[ -n "$line" ]] || continue
+    skills="${skills:+$skills, }/$line"
+  done < "$file"
+  [[ -n "$skills" ]] || return 0
+  printf 'This repo has conventions. Before writing code invoke each of these skills and follow its conventions: %s.\n' "$skills"
+}
+
 run_agent() {
   local cwd="$1"
   local rules="$2"
@@ -935,7 +951,10 @@ case "$LANE" in
   feature|bug|docs)
     need_issue
     DIR="$(repo_dir)"
-    run_mem_lane "$LANE" "$DIR" "$(cat "$FACTORY/lanes/${LANE}.md")"$'\n'"$HARD" "Implement GitHub issue $(issue_url "$ISSUE") in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."
+    RULES="$(cat "$FACTORY/lanes/${LANE}.md")"$'\n'"$HARD"
+    CONVENTIONS="$(conventions_rules "$DIR")"
+    [[ -z "$CONVENTIONS" ]] || RULES+=$'\n'"$CONVENTIONS"
+    run_mem_lane "$LANE" "$DIR" "$RULES" "Implement GitHub issue $(issue_url "$ISSUE") in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."
     exit $?
     ;;
   review)
