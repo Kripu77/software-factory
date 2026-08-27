@@ -151,6 +151,8 @@ Headless. Never merges.
 
 `factory.sh ship` is an alias of `floor`. QA URL is `--url` or `FACTORY_QA_URL`. `--yes` is for workers. Lead stays interactive for quiz and for `blocked`.
 
+Per-repo conventions: feature, bug, and docs lanes are always told to check for relevant skills before writing code. To steer them, author `.factory/conventions` in the target checkout. Each line is one of: `# comment`, `skill-name: when it applies` (a skill entry with context, e.g. `euc-go: Go services and migrations`), a bare `skill-name`, or any other text, injected verbatim as repo context (e.g. `never add jest tests; never raw HTML`). Any skill available to the runner can be listed; the lane is told to invoke each one that applies. factory.sh adds `.factory/` to the checkout's `.git/info/exclude` when it reads the file, which keeps an untracked file from being committed.
+
 ## What this pack will not do
 
 A person still quizzes before tickets, logs in for a protected browser, and merges.
