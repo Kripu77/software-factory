@@ -14,6 +14,18 @@ Implement only the ticket you were given.
 5. Open or update a PR. Do not merge.
 6. Stop and ask for `/thermo-nuclear-code-quality-review` then `/loop-on-ci`.
 
+## Review feedback
+
+When you act on a review comment on your PR, resolve its thread. Threads you did not act on, or replied to with a dispute, stay unresolved with a reply.
+
+```bash
+# List threads with ids
+gh api graphql -f query='query($owner:String!,$name:String!,$pr:Int!){repository(owner:$owner,name:$name){pullRequest(number:$pr){reviewThreads(first:100){nodes{id isResolved comments(first:1){nodes{path body}}}}}}}' -F owner=<owner> -F name=<repo> -F pr=<number>
+
+# Resolve one addressed thread
+gh api graphql -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}' -F id=<thread-id>
+```
+
 ## Extra rules
 
 - No code comments
