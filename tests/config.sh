@@ -100,6 +100,20 @@ cfg skills "no-colon-entry" >/dev/null 2>&1 && fail "skills entry without ': ' m
 cfg skills $'euc-go: one\nnot-an-entry' >/dev/null 2>&1 && fail "skills entry with a newline must fail"
 grep -qxF "euc-go: Go services" "$WS/widgets/.factory/conventions" || fail "rejected entries must not overwrite conventions"
 
+# Worktree checkouts (.git is a file) still get the .factory/ exclude
+mkdir -p "$WS/wtree"
+git -C "$WS/wtree" init -q
+git -C "$WS/wtree" remote add origin "https://github.com/acme/wtree.git"
+git -C "$WS/wtree" -c user.email=t@t.t -c user.name=t commit -q --allow-empty -m init
+git -C "$WS/wtree" worktree add -q "$WS/wtree/.worktrees/wt" -b wtb
+(cd "$WS/wtree/.worktrees/wt" && FACTORY_WORKSPACE="$WS" "$FACTORY" config tracker github >/dev/null)
+grep -qxF "tracker=github" "$WS/wtree/.worktrees/wt/.factory/config" || fail "worktree config must land in the worktree"
+[[ -z "$(git -C "$WS/wtree/.worktrees/wt" status --porcelain)" ]] || fail ".factory/ must be excluded in a worktree checkout"
+
+# Extra positional args are rejected, not silently dropped
+cfg tracker github linear >/dev/null 2>&1 && fail "config tracker with extra args must fail"
+grep -qxF "tracker=github" "$WS/widgets/.factory/config" || fail "rejected tracker args must not change config"
+
 # README documents the subcommand
 grep -q "factory.sh config" "$ROOT/README.md" || fail "README missing factory.sh config"
 

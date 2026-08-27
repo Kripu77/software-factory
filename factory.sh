@@ -201,11 +201,9 @@ config_dir() {
     repo_dir
     return 0
   fi
-  top="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  top="$(git rev-parse --show-toplevel 2>/dev/null || git -C "$WORKSPACE" rev-parse --show-toplevel 2>/dev/null || true)"
   if [[ -n "$top" ]]; then
     printf '%s\n' "$top"
-  elif [[ -d "$WORKSPACE/.git" ]]; then
-    printf '%s\n' "$WORKSPACE"
   else
     echo "Need --repo <name> or a git checkout" >&2
     exit 1
@@ -213,10 +211,11 @@ config_dir() {
 }
 
 factory_exclude() {
-  local dir="$1" exclude="$1/.git/info/exclude"
-  [[ -d "$dir/.git" ]] || return 0
+  local dir="$1" exclude
+  exclude="$(git -C "$dir" rev-parse --git-path info/exclude 2>/dev/null)" || return 0
+  [[ "$exclude" == /* ]] || exclude="$dir/$exclude"
   grep -qxF '.factory/' "$exclude" 2>/dev/null && return 0
-  mkdir -p "$dir/.git/info"
+  mkdir -p "${exclude%/*}"
   [[ ! -s "$exclude" || -z "$(tail -c1 "$exclude")" ]] || printf '\n' >> "$exclude"
   printf '.factory/\n' >> "$exclude"
 }
@@ -1061,7 +1060,10 @@ case "$LANE" in
   config)
     DIR="$(config_dir)"
     case "$CONFIG_CMD" in
-      tracker) config_tracker "$DIR" "${CONFIG_ARGS[0]:-}" ;;
+      tracker)
+        [[ ${#CONFIG_ARGS[@]} -le 1 ]] || { echo "config tracker takes one value: factory.sh config tracker <github|linear>" >&2; exit 1; }
+        config_tracker "$DIR" "${CONFIG_ARGS[0]:-}"
+        ;;
       skills) config_skills "$DIR" ${CONFIG_ARGS[@]+"${CONFIG_ARGS[@]}"} ;;
       *) config_show "$DIR" ;;
     esac
