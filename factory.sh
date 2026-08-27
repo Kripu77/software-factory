@@ -188,10 +188,10 @@ conventions_rules() {
       fi
     done < "$file"
   fi
-  local out='Check for relevant skills before writing code and follow their conventions.'
-  [[ -z "$skills" ]] || out+=$'\n'"This repo enables these skills; invoke each one that applies before writing code:$skills"
-  [[ -z "$context" ]] || out+=$'\n'"Repo context:$context"
-  printf '%s\n' "$out"
+  local out=''
+  [[ -z "$skills" ]] || out="This repo enables these skills; invoke each one that applies:$skills"$'\n'
+  [[ -z "$context" ]] || out+="Repo context:$context"$'\n'
+  [[ -z "$out" ]] || printf '%s' "$out"
 }
 
 run_agent() {
@@ -970,7 +970,10 @@ case "$LANE" in
   review)
     need_pr
     DIR="$(repo_dir)"
-    run_mem_lane review "$DIR" "$(cat "$FACTORY/lanes/review.md")"$'\n'"$HARD" "Review $(pr_url "$PR") only. Use /thermo-nuclear-code-quality-review. Do not implement. Do not merge."
+    RULES="$(cat "$FACTORY/lanes/review.md")"$'\n'"$HARD"
+    CONVENTIONS="$(conventions_rules "$DIR")"
+    [[ -z "$CONVENTIONS" ]] || RULES+=$'\n'"$CONVENTIONS"
+    run_mem_lane review "$DIR" "$RULES" "Review $(pr_url "$PR") only. Use /thermo-nuclear-code-quality-review. Do not implement. Do not merge."
     exit $?
     ;;
   ci)
