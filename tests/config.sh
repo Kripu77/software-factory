@@ -72,6 +72,34 @@ cfg tracker github >/dev/null
 out="$(cd "$WS/widgets" && "$FACTORY" config)"
 grep -q "tracker github" <<< "$out" || fail "config should work from inside a checkout, got: $out"
 
+# With FACTORY_WORKSPACE set, config without --repo targets the cwd checkout,
+# not the workspace sibling named after the origin remote
+mkdir -p "$WS/widgets-fork"
+git -C "$WS/widgets-fork" init -q
+git -C "$WS/widgets-fork" remote add origin "https://github.com/acme/widgets.git"
+before="$(cat "$WS/widgets/.factory/config")"
+(cd "$WS/widgets-fork" && FACTORY_WORKSPACE="$WS" "$FACTORY" config tracker linear --team FRK >/dev/null)
+grep -qxF "team=FRK" "$WS/widgets-fork/.factory/config" || fail "config from a checkout must write that checkout's .factory/config"
+[[ "$(cat "$WS/widgets/.factory/config")" == "$before" ]] || fail "config from widgets-fork must not touch widgets"
+
+# Explicit --repo still wins over the cwd
+(cd "$WS/widgets-fork" && FACTORY_WORKSPACE="$WS" "$FACTORY" config --repo widgets tracker github >/dev/null)
+grep -qxF "tracker=github" "$WS/widgets/.factory/config" || fail "--repo must target the named checkout"
+grep -qxF "team=FRK" "$WS/widgets-fork/.factory/config" || fail "--repo widgets must not touch widgets-fork"
+
+# Appending .factory/ must not glue onto an exclude file missing its trailing newline
+printf 'node_modules' > "$WS/widgets-fork/.git/info/exclude"
+(cd "$WS/widgets-fork" && FACTORY_WORKSPACE="$WS" "$FACTORY" config tracker github >/dev/null)
+grep -qxF "node_modules" "$WS/widgets-fork/.git/info/exclude" || fail "existing exclude patterns must survive the append"
+grep -qxF ".factory/" "$WS/widgets-fork/.git/info/exclude" || fail ".factory/ missing after newline-less append"
+(cd "$WS/widgets-fork" && FACTORY_WORKSPACE="$WS" "$FACTORY" config tracker github >/dev/null)
+[[ "$(grep -cxF '.factory/' "$WS/widgets-fork/.git/info/exclude")" == "1" ]] || fail ".factory/ appended twice after newline fix"
+
+# Skills entries must be one line in the "<skill-name>: <when>" format
+cfg skills "no-colon-entry" >/dev/null 2>&1 && fail "skills entry without ': ' must fail"
+cfg skills $'euc-go: one\nnot-an-entry' >/dev/null 2>&1 && fail "skills entry with a newline must fail"
+grep -qxF "euc-go: Go services" "$WS/widgets/.factory/conventions" || fail "rejected entries must not overwrite conventions"
+
 # README documents the subcommand
 grep -q "factory.sh config" "$ROOT/README.md" || fail "README missing factory.sh config"
 

@@ -79,12 +79,13 @@ LIMIT=""
 
 CONFIG_CMD=""
 CONFIG_ARGS=()
+CONFIG_REPO_FLAG=""
 TEAM=""
 
 if [[ "$LANE" == "config" ]]; then
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --repo) REPO="${2:-}"; shift 2 ;;
+      --repo) REPO="${2:-}"; CONFIG_REPO_FLAG=1; shift 2 ;;
       --team) TEAM="${2:-}"; shift 2 ;;
       -h|--help) usage ;;
       --*) echo "Unknown arg: $1" >&2; usage ;;
@@ -195,8 +196,14 @@ repo_dir() {
 }
 
 config_dir() {
-  if [[ -n "$REPO" ]]; then
+  local top=""
+  if [[ -n "$CONFIG_REPO_FLAG" ]]; then
     repo_dir
+    return 0
+  fi
+  top="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -n "$top" ]]; then
+    printf '%s\n' "$top"
   elif [[ -d "$WORKSPACE/.git" ]]; then
     printf '%s\n' "$WORKSPACE"
   else
@@ -206,11 +213,12 @@ config_dir() {
 }
 
 factory_exclude() {
-  local dir="$1"
+  local dir="$1" exclude="$1/.git/info/exclude"
   [[ -d "$dir/.git" ]] || return 0
-  grep -qxF '.factory/' "$dir/.git/info/exclude" 2>/dev/null && return 0
+  grep -qxF '.factory/' "$exclude" 2>/dev/null && return 0
   mkdir -p "$dir/.git/info"
-  printf '.factory/\n' >> "$dir/.git/info/exclude"
+  [[ ! -s "$exclude" || -z "$(tail -c1 "$exclude")" ]] || printf '\n' >> "$exclude"
+  printf '.factory/\n' >> "$exclude"
 }
 
 config_show() {
@@ -251,9 +259,12 @@ config_tracker() {
 }
 
 config_skills() {
-  local dir="$1"
+  local dir="$1" entry
   shift
   [[ $# -gt 0 ]] || { echo 'Need entries: factory.sh config skills "<skill-name>: <when it applies>" [more...]' >&2; exit 1; }
+  for entry in "$@"; do
+    [[ "$entry" == *": "* && "$entry" != *$'\n'* ]] || { echo "Skills entries are one line each: \"<skill-name>: <when it applies>\", got: $entry" >&2; exit 1; }
+  done
   mkdir -p "$dir/.factory"
   factory_exclude "$dir"
   printf '%s\n' "$@" > "$dir/.factory/conventions"
