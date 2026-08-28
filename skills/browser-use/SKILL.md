@@ -9,7 +9,7 @@ description: Drive a real browser to QA a running app. Screenshots, clicks, form
 
 Need to test a running web app by actually using it. No smoke suite, or the suite does not cover this flow.
 
-Borrowed from gstack browse: navigate, click, fill, screenshot, assert. Do not pull gstack binaries. Use the harness browser.
+Navigate, click, fill, screenshot, assert. Use the harness browser.
 
 ## How to drive the browser
 

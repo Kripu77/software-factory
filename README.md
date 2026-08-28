@@ -127,7 +127,6 @@ Or one lane, still one ticket:
 - `/qa` with a URL or owner/repo#pr
 - `/telemetry` with the question
 - `/unslop` on any writing
-- `/poteto-mode` for the writing and playbook style
 
 Headless. Never merges.
 

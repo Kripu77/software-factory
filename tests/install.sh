@@ -36,6 +36,19 @@ need_text README.md "~/.local/bin"
 need_text README.md "git remote"
 need_text README.md "AGENTS.md"
 
+if grep -qi poteto "$ROOT/AGENTS.md" "$ROOT/README.md" "$ROOT/install.sh"; then
+  fail "poteto-mode is not a factory skill"
+fi
+[[ ! -e "$ROOT/skills/poteto-mode" ]] || fail "skills/poteto-mode should not exist"
+[[ ! -e "$ROOT/commands/poteto-mode.md" ]] || fail "commands/poteto-mode.md should not exist"
+[[ ! -e "$ROOT/playbooks" ]] || fail "playbooks/ is not part of this pack"
+if grep -qi gstack "$ROOT/skills/browser-use/SKILL.md"; then
+  fail "browser-use must not name other products"
+fi
+while IFS= read -r skill; do
+  [[ -f "$ROOT/skills/$skill/SKILL.md" ]] || fail "install.sh links missing skill $skill"
+done < <(sed -n 's/.*for skill in \(.*\); do/\1/p' "$ROOT/install.sh" | tr ' ' '\n')
+
 hid="$TMP/bin"
 mkdir -p "$hid"
 for cmd in bash mkdir ln rm echo grep command cat cp; do
