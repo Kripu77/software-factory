@@ -127,6 +127,17 @@ if [[ "${GH_FAIL:-}" == 1 && "$cmd1" == "issue" && "$cmd2" == "comment" ]]; then
   echo "comment failed" >&2
   exit 1
 fi
+case "$cmd1 $cmd2" in
+  "issue view")
+    printf '%s\n' 'id=6'
+    printf '%s\n' 'title=Add widgets list'
+    printf '%s\n' 'url=https://github.com/acme/widgets/issues/6'
+    printf '%s\n' 'status=open'
+    printf '%s\n' 'labels=enhancement,ready-for-agent'
+    printf '%s\n' 'body:'
+    printf '%s\n' 'Ship a list of widgets.'
+    ;;
+esac
 exit 0
 EOF
 chmod +x "$TMP/bin/gh"

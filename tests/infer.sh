@@ -27,6 +27,23 @@ exit 0
 EOF
 chmod +x "$TMP/bin/runner"
 
+cat > "$TMP/bin/gh" << 'EOF'
+#!/usr/bin/env bash
+case "$1 $2" in
+  "issue view")
+    printf '%s\n' "id=${3:-}"
+    printf '%s\n' 'title=Add widgets list'
+    printf '%s\n' 'url=https://github.com/acme/widgets/issues/12'
+    printf '%s\n' 'status=open'
+    printf '%s\n' 'labels=enhancement,ready-for-agent'
+    printf '%s\n' 'body:'
+    printf '%s\n' 'Ship a list of widgets.'
+    ;;
+esac
+exit 0
+EOF
+chmod +x "$TMP/bin/gh"
+
 PATH="$TMP/bin:$PATH" FAKE_DUMP="$DUMP" FACTORY_WORKSPACE="$WS" FACTORY_RUNNER=runner FACTORY_HARNESS=claude \
   "$FACTORY" feature --issue 12 >"$TMP/out" 2>"$TMP/err"
 [[ -f "$DUMP/ran" ]] || fail "should infer owner/repo from origin and run, err=$(cat "$TMP/err")"

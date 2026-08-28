@@ -35,6 +35,17 @@ chmod +x "$TMP/bin/runner"
 
 cat > "$TMP/bin/gh" << 'EOF'
 #!/usr/bin/env bash
+case "$1 $2" in
+  "issue view")
+    printf '%s\n' 'id=6'
+    printf '%s\n' 'title=Add widgets list'
+    printf '%s\n' 'url=https://github.com/acme/widgets/issues/6'
+    printf '%s\n' 'status=open'
+    printf '%s\n' 'labels=enhancement,ready-for-agent'
+    printf '%s\n' 'body:'
+    printf '%s\n' 'Ship a list of widgets.'
+    ;;
+esac
 exit 0
 EOF
 chmod +x "$TMP/bin/gh"

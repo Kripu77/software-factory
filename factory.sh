@@ -835,7 +835,7 @@ run_mem_lane() {
 
 floor_classify() {
   local name
-  ticket_get || true
+  ticket_get || return 1
   [[ -n "${TICKET_LABELS:-}" ]] || { printf '%s\n' feature; return 0; }
   while IFS= read -r name; do
     name="${name#"${name%%[![:space:]]*}"}"
@@ -938,7 +938,7 @@ floor_next() {
       failed) printf '%s\n' stop:failed; return 0 ;;
     esac
   done
-  impl="$(floor_classify)"
+  impl="$(floor_classify)" || return 1
   if [[ "$impl" == bug ]]; then
     s="$(printf '%s\n' "$raw" | latest_lane_status telemetry)"
     if [[ -z "$s" && -z "${FLOOR_DID_TEL:-}" ]]; then
@@ -996,7 +996,7 @@ floor_run() {
     pr="$(floor_pr_from_mem)"
     [[ -n "$pr" ]] || pr="$(floor_pr_from_gh)"
     [[ -n "$pr" ]] && PR="$pr"
-    next="$(floor_next)"
+    next="$(floor_next)" || return 1
     case "$next" in
       stop:blocked)
         echo "blocked. stop."
@@ -1079,7 +1079,8 @@ case "$LANE" in
     RULES="$(cat "$FACTORY/lanes/${LANE}.md")"$'\n'"$HARD"
     CONVENTIONS="$(conventions_rules "$DIR")"
     [[ -z "$CONVENTIONS" ]] || RULES+=$'\n'"$CONVENTIONS"
-    run_mem_lane "$LANE" "$DIR" "$RULES" "Implement this ticket in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."$'\n\n'"$(ticket_context)"
+    ctx="$(ticket_context)" || exit 1
+    run_mem_lane "$LANE" "$DIR" "$RULES" "Implement this ticket in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."$'\n\n'"$ctx"
     exit $?
     ;;
   review)
@@ -1112,7 +1113,8 @@ case "$LANE" in
     need_issue
     mem_read_context
     prompt="Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}. After tickets exist, start factory.sh floor --repo ${REPO:-<repo>} --issue ${ISSUE} (or one factory.sh lane). Dispatch is factory.sh only. Writing product code, leaving a review, or watching CI in this session is a failed run."
-    prompt+=$'\n\n'"$(ticket_context)"
+    ctx="$(ticket_context)" || exit 1
+    prompt+=$'\n\n'"$ctx"
     if [[ -n "${MEM_CONTEXT:-}" ]]; then
       prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
     fi

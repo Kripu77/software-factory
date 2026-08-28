@@ -235,7 +235,7 @@ EOF
 chmod +x "$TMP/bin/runner"
 rm -rf "$WS/widgets/.factory"
 
-# Dead FACTORY_TRACKER_CMD must warn and must not invent a ticket
+# Dead FACTORY_TRACKER_CMD must fail closed: no lane, no fabricated ticket
 reset_dump
 cat > "$TMP/bin/dead-tracker" << 'EOF'
 #!/usr/bin/env bash
@@ -243,10 +243,15 @@ echo "tracker down" >&2
 exit 1
 EOF
 chmod +x "$TMP/bin/dead-tracker"
+set +e
 FACTORY_TRACKER_CMD="$TMP/bin/dead-tracker" run_env "$FACTORY" feature --repo widgets --issue ABC-123 >"$TMP/out" 2>"$TMP/err"
+dead_code=$?
+set -e
+[[ $dead_code -ne 0 ]] || fail "dead tracker get should fail the lane, err=$(cat "$TMP/err")"
 grep -q "tracker down" "$TMP/err" || fail "dead tracker get should warn with the plug error: $(cat "$TMP/err")"
-if [[ -f "$DUMP/prompt" ]] && grep -q "title:" "$DUMP/prompt"; then
-  fail "dead get should not invent ticket fields: $(cat "$DUMP/prompt")"
+[[ ! -f "$DUMP/ran" ]] || fail "dead tracker must not start the lane"
+if [[ -f "$DUMP/prompt" ]]; then
+  fail "dead get should not hand the lane a ticket: $(cat "$DUMP/prompt")"
 fi
 
 # Unstructured gh output is not a ticket record
@@ -265,9 +270,15 @@ esac
 exit 0
 EOF
 chmod +x "$TMP/bin/gh"
+set +e
 run_env "$FACTORY" feature --repo widgets --issue 6 >"$TMP/out" 2>"$TMP/err"
-[[ -f "$DUMP/prompt" ]] || fail "unstructured gh should still run feature"
-grep -q "labels:" "$DUMP/prompt" && fail "unstructured lines must not become labels: $(cat "$DUMP/prompt")"
+unstruct_code=$?
+set -e
+[[ $unstruct_code -ne 0 ]] || fail "unstructured gh must fail closed, err=$(cat "$TMP/err")"
+[[ ! -f "$DUMP/ran" ]] || fail "unstructured gh must not start the lane"
+if [[ -f "$DUMP/prompt" ]]; then
+  fail "unstructured gh must not hand the lane a ticket: $(cat "$DUMP/prompt")"
+fi
 cat > "$TMP/bin/gh" << 'EOF'
 #!/usr/bin/env bash
 dump="${FAKE_DUMP:?}"
@@ -317,6 +328,18 @@ if [[ -f "$DUMP/gh" ]] && grep -q "issue view" "$DUMP/gh"; then
   fail "floor must not gh issue view when MCP is set: $(cat "$DUMP/gh")"
 fi
 grep -q "pr view" "$DUMP/gh" || fail "PRs stay on GitHub: $(cat "$DUMP/gh" 2>/dev/null || true)"
+
+# Floor must not dispatch when get fails
+reset_dump
+set +e
+FACTORY_TRACKER_CMD="$TMP/bin/dead-tracker" run_env "$FACTORY" floor --repo widgets --issue ABC-123 >"$TMP/fout" 2>"$TMP/ferr"
+floor_dead=$?
+set -e
+[[ $floor_dead -ne 0 ]] || fail "dead get must fail floor, err=$(cat "$TMP/ferr")"
+if grep -q "dispatch " "$TMP/fout"; then
+  fail "dead get must not dispatch a lane: $(cat "$TMP/fout")"
+fi
+grep -q "tracker down" "$TMP/ferr" || fail "floor dead get should surface the plug error: $(cat "$TMP/ferr")"
 
 # A label with spaces is not word-split into a fake bug
 reset_dump

@@ -121,9 +121,9 @@ ticket_get() {
 }
 
 ticket_context() {
-  ticket_get || true
+  ticket_get || return 1
   local out=""
-  out="id: ${TICKET_ID:-${ISSUE:-}}"
+  out="id: $TICKET_ID"
   [[ -z "$TICKET_TITLE" ]] || out+=$'\n'"title: $TICKET_TITLE"
   [[ -z "$TICKET_URL" ]] || out+=$'\n'"url: $TICKET_URL"
   [[ -z "$TICKET_STATUS" ]] || out+=$'\n'"status: $TICKET_STATUS"
