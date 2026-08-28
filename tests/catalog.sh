@@ -342,7 +342,7 @@ if "tag and push" not in section.lower():
     raise SystemExit("Install section must say tag and push")
 if "the agent" in section.lower():
     raise SystemExit("README install must not talk about the agent")
-if "Kripu77/software-factory@v1.0.0" not in section:
+if not re.search(r"Kripu77/software-factory@v\d+\.\d+\.\d+", section):
     raise SystemExit("Install must keep GitHub marketplace one-liners at the tag")
 PY
 
