@@ -110,8 +110,8 @@ ticket_get() {
     fi
     rm -f "$err"
   else
-    TICKET_ID="$ISSUE"
-    return 0
+    printf '%s\n' "Need FACTORY_TRACKER_CMD to get ticket from tracker $TRACKER" >&2
+    return 1
   fi
   parse_ticket_record "$raw"
   if [[ -z "$TICKET_ID" ]]; then

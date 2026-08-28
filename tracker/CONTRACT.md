@@ -44,7 +44,7 @@ comment <id> --body <text>
 
 ## Default
 
-No `FACTORY_TRACKER_CMD` and tracker `github` (or no config): `gh issue view` / `gh issue comment`. Tracker `linear` without a command does not call `gh` for tickets.
+No `FACTORY_TRACKER_CMD` and tracker `github` (or no config): `gh issue view` / `gh issue comment`. Tracker `linear` without a command does not call `gh` for tickets. Get fails. Set `FACTORY_TRACKER_CMD`.
 
 ## Configure
 

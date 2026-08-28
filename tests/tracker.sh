@@ -177,16 +177,35 @@ if [[ -f "$DUMP/mcp" ]] && grep -q comment "$DUMP/mcp"; then
   fail "review must not comment through the issue tracker plug: $(cat "$DUMP/mcp")"
 fi
 
-# Tracker linear without an MCP command must not call gh for ticket context
+# Tracker linear without FACTORY_TRACKER_CMD fails closed: no lane, no fabricated ticket
 reset_dump
 mkdir -p "$WS/widgets/.factory"
 printf 'tracker=linear\nteam=ABC\n' > "$WS/widgets/.factory/config"
+set +e
 run_env "$FACTORY" feature --repo widgets --issue ABC-123 >"$TMP/out" 2>"$TMP/err"
-[[ -f "$DUMP/ran" ]] || fail "linear name without MCP should still run, err=$(cat "$TMP/err")"
+linear_code=$?
+set -e
+[[ $linear_code -ne 0 ]] || fail "linear without MCP should fail closed, err=$(cat "$TMP/err")"
 if [[ -f "$DUMP/gh" ]] && grep -q "issue view" "$DUMP/gh"; then
   fail "tracker linear must not gh issue view: $(cat "$DUMP/gh")"
 fi
-grep -q "ABC-123" "$DUMP/prompt" || fail "linear name should still pass the ticket id: $(cat "$DUMP/prompt")"
+[[ ! -f "$DUMP/ran" ]] || fail "linear without MCP must not start the lane"
+if [[ -f "$DUMP/prompt" ]]; then
+  fail "linear without MCP must not hand the lane a ticket: $(cat "$DUMP/prompt")"
+fi
+grep -q "FACTORY_TRACKER_CMD" "$TMP/err" || fail "linear without MCP should ask for FACTORY_TRACKER_CMD: $(cat "$TMP/err")"
+
+# Floor must not dispatch when tracker is not github and no FACTORY_TRACKER_CMD
+reset_dump
+set +e
+run_env "$FACTORY" floor --repo widgets --issue ABC-123 >"$TMP/fout" 2>"$TMP/ferr"
+floor_linear=$?
+set -e
+[[ $floor_linear -ne 0 ]] || fail "linear without MCP must fail floor, err=$(cat "$TMP/ferr")"
+if grep -q "dispatch " "$TMP/fout"; then
+  fail "linear without MCP must not dispatch a lane: $(cat "$TMP/fout")"
+fi
+grep -q "FACTORY_TRACKER_CMD" "$TMP/ferr" || fail "floor linear without MCP should ask for FACTORY_TRACKER_CMD: $(cat "$TMP/ferr")"
 
 # Lead still publishes GitHub issues; ticket_context is extra context only
 reset_dump
@@ -214,8 +233,8 @@ done
 exit 0
 EOF
 chmod +x "$TMP/bin/runner"
-run_env "$FACTORY" lead --repo widgets --issue ABC-123 >"$TMP/lout" 2>"$TMP/lerr" || true
-[[ -f "$DUMP/prompt" ]] || fail "lead should still run on tracker linear, err=$(cat "$TMP/lerr")"
+FACTORY_TRACKER_CMD="$TMP/bin/mcp-ticket" run_env "$FACTORY" lead --repo widgets --issue ABC-123 >"$TMP/lout" 2>"$TMP/lerr" || true
+[[ -f "$DUMP/prompt" ]] || fail "lead should still run with the tracker plug, err=$(cat "$TMP/lerr")"
 grep -q "Publish new tickets on the configured tracker" "$DUMP/prompt" && fail "lead must not change ticket publish workflow: $(cat "$DUMP/prompt")"
 grep -q "ABC-123" "$DUMP/prompt" || fail "lead should still receive ticket context: $(cat "$DUMP/prompt")"
 grep -q "Publish new tickets on the configured tracker" "$FACTORY" && fail "lead must not tell the agent to publish on the configured tracker"
