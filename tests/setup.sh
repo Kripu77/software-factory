@@ -175,16 +175,35 @@ grep -qxF "never add jest tests" "$WS/widgets/.factory/conventions" || fail "con
 out="$(FACTORY_WORKSPACE="$WS" "$FACTORY" config --repo widgets)"
 grep -q "tracker linear" <<< "$out" || fail "config should show what setup wrote, got: $out"
 grep -q "tdd: features and bug fixes" <<< "$out" || fail "config should list the skill setup wrote, got: $out"
+SETUP_LIB="$ROOT/lib/setup.sh"
+[[ -f "$SETUP_LIB" ]] || fail "TTY wizard must live in lib/setup.sh"
+grep -q 'lib/setup.sh' "$FACTORY" || fail "factory.sh must source lib/setup.sh"
+if grep -q '^setup_run()' "$FACTORY"; then
+  fail "setup_run must not be defined in factory.sh"
+fi
+if grep -q '^setup_init_ui()' "$FACTORY"; then
+  fail "TTY paint must not live in factory.sh"
+fi
 awk '
   /^setup_write\(\)/ {on=1}
   on {print}
   on && /^}$/ {exit}
-' "$FACTORY" | grep -q "config_tracker" || fail "setup_write must call config_tracker"
+' "$SETUP_LIB" | grep -q "config_tracker" || fail "setup_write must call config_tracker"
 awk '
   /^setup_write\(\)/ {on=1}
   on {print}
   on && /^}$/ {exit}
-' "$FACTORY" | grep -q "config_write_conventions" || fail "setup_write must call config_write_conventions"
+' "$SETUP_LIB" | grep -q "config_write_conventions" || fail "setup_write must call config_write_conventions"
+awk '
+  /^config_show\(\)/ {on=1}
+  on {print}
+  on && /^}$/ {exit}
+' "$FACTORY" | grep -q "config_read" || fail "config_show must use config_read"
+grep -q 'config_read' "$SETUP_LIB" || fail "wizard must read existing config through config_read"
+
+# Confirm writes in place; write is not another numbered stage
+grep -E '5/5[[:space:]]+Write' "$TMP/skip-out" && fail "write must not be its own stage, got $(cat "$TMP/skip-out")"
+grep -qi "wrote factory config" "$TMP/skip-out" || fail "confirm should write on the review screen, got $(cat "$TMP/skip-out")"
 
 # Existing config, update tracker, skip skills (leave conventions)
 printf 'tracker=github\n' >"$WS/widgets/.factory/config"
@@ -197,6 +216,21 @@ set -e
 [[ "$upd_code" -eq 0 ]] || fail "update should succeed, err=$(cat "$TMP/upd-err") out=$(cat "$TMP/upd-out")"
 grep -qxF "tracker=linear" "$WS/widgets/.factory/config" || fail "update should change tracker"
 grep -qxF "euc-go: Go services" "$WS/widgets/.factory/conventions" || fail "skip skills should keep existing conventions"
+grep -qi "current" "$TMP/upd-out" || fail "skills stage should show existing lines, got $(cat "$TMP/upd-out")"
+grep -q "euc-go: Go services" "$TMP/upd-out" || fail "skills stage should list current conventions, got $(cat "$TMP/upd-out")"
+
+# Typed skill lines replace the list after showing current
+printf 'tracker=github\n' >"$WS/widgets/.factory/config"
+printf 'euc-go: Go services\n' >"$WS/widgets/.factory/conventions"
+answers_file $'u\nskip\ntdd: features and bug fixes\n\ny\n'
+set +e
+pty_setup "$TMP/answers" "$WS/widgets" >"$TMP/repl-out" 2>"$TMP/repl-err"
+repl_code=$?
+set -e
+[[ "$repl_code" -eq 0 ]] || fail "replace skills should succeed, err=$(cat "$TMP/repl-err") out=$(cat "$TMP/repl-out")"
+grep -qi "current" "$TMP/repl-out" || fail "replace path should show existing lines first, got $(cat "$TMP/repl-out")"
+grep -qxF "tdd: features and bug fixes" "$WS/widgets/.factory/conventions" || fail "typed skills should replace conventions"
+grep -q "euc-go" "$WS/widgets/.factory/conventions" && fail "typed skills must not keep old conventions"
 
 # --repo still targets the named checkout
 mkdir -p "$WS/other"
@@ -219,6 +253,7 @@ if grep -E '\$FACTORY setup|factory\.sh setup' "$ROOT/install.sh"; then
   fail "install.sh must not run the setup wizard"
 fi
 grep -q "factory setup" "$ROOT/install.sh" || fail "install.sh should point at factory setup after plugin install"
+grep -Eq 'Next:.*factory setup.*(grok|claude)' "$ROOT/install.sh" || fail "install next step should keep the runner after factory setup"
 grep -q "factory.sh setup" "$FACTORY" || fail "usage should list factory.sh setup"
 
 # install.sh <checkout> still does not write factory config
@@ -233,5 +268,18 @@ mkdir -p "$prod"
 HOME="$TMP/home" PATH="$hid" "$ROOT/install.sh" "$prod" >/dev/null
 [[ ! -e "$prod/.factory/config" ]] || fail "install.sh must not write .factory/config"
 [[ ! -e "$prod/.factory/conventions" ]] || fail "install.sh must not write conventions"
+
+# The PATH command from install.sh is a symlink at ~/.local/bin/factory
+factory_cli="$TMP/home/.local/bin/factory"
+[[ -L "$factory_cli" ]] || fail "install should leave a factory symlink"
+rm -rf "$WS/widgets/.factory"
+set +e
+(cd "$WS/widgets" && PATH="$(dirname "$factory_cli"):$PATH" FACTORY_WORKSPACE="$WS" NO_COLOR=1 TERM=dumb factory setup) \
+  </dev/null >"$TMP/sym-out" 2>"$TMP/sym-err"
+sym_code=$?
+set -e
+[[ "$sym_code" -ne 0 ]] || fail "factory setup via the install symlink without a TTY must fail"
+grep -qi "terminal" "$TMP/sym-err" "$TMP/sym-out" || fail "symlink factory setup should mention a terminal, got out=$(cat "$TMP/sym-out") err=$(cat "$TMP/sym-err")"
+[[ ! -e "$WS/widgets/.factory/config" ]] || fail "symlink factory setup without a TTY must not write"
 
 echo "ok setup"

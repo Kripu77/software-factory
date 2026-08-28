@@ -85,7 +85,7 @@ if [[ -n "$WORKSPACE" && -d "$WORKSPACE" ]]; then
 fi
 
 echo
-echo "Next: cd into the product repo, run factory setup, then /lead"
+echo "Next: cd into the product repo, run factory setup, then open grok (or claude) and /lead"
 echo "Owner and repo come from git remote. Workspace is that directory."
 case ":${PATH}:" in
   *":${HOME}/.local/bin:"*) ;;
