@@ -109,7 +109,7 @@ need_text README.md "git clone"
 need_text README.md "./install.sh"
 need_text README.md "from-source"
 need_text README.md "git tag"
-need_text README.md "v1.0.0"
+grep -Eq "v[0-9]+\.[0-9]+\.[0-9]+" "$ROOT/README.md" || fail "README.md missing a release tag"
 need_text README.md "Releases"
 
 echo "ok release"

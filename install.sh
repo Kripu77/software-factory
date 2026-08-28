@@ -8,7 +8,7 @@ link_skills() {
   local label="$2"
   mkdir -p "$dest_root"
   local skill dest
-  for skill in tdd implement unslop to-tickets thermo-nuclear-review loop-on-ci poteto-mode run-smoke-tests browser-use; do
+  for skill in tdd implement unslop to-tickets code-review loop-on-ci poteto-mode run-smoke-tests browser-use; do
     dest="$dest_root/factory-${skill}"
     rm -rf "$dest"
     ln -s "$FACTORY/skills/${skill}" "$dest"
