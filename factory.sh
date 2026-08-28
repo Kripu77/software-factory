@@ -1083,7 +1083,7 @@ case "$LANE" in
     RULES="$(cat "$FACTORY/lanes/review.md")"$'\n'"$HARD"
     CONVENTIONS="$(conventions_rules "$DIR")"
     [[ -z "$CONVENTIONS" ]] || RULES+=$'\n'"$CONVENTIONS"
-    run_mem_lane review "$DIR" "$RULES" "Review $(pr_url "$PR") only. Use /thermo-nuclear-code-quality-review. Do not implement. Do not merge."
+    run_mem_lane review "$DIR" "$RULES" "Review $(pr_url "$PR") only. Use /code-review. Do not implement. Do not merge."
     exit $?
     ;;
   ci)

@@ -27,4 +27,4 @@ A seam is the public boundary you test at. Test only at pre-agreed seams. Write 
 
 - Red before green.
 - One seam, one test, one minimal implementation per cycle.
-- Refactoring is not part of this loop. It belongs to `/thermo-nuclear-code-quality-review`.
+- Refactoring is not part of this loop. It belongs to `/code-review`.

@@ -13,7 +13,7 @@ Implement only the ticket you were given.
 4. Typecheck often. Run focused tests often. Full suite once at the end.
 5. `/unslop` against main.
 6. Open or update a PR. Do not merge.
-7. Stop and ask for `/thermo-nuclear-code-quality-review` then `/loop-on-ci`.
+7. Stop and ask for `/code-review` then `/loop-on-ci`.
 
 ## Review feedback
 
