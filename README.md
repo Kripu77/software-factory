@@ -53,28 +53,28 @@ Add this GitHub repo as a marketplace and install software-factory at the Releas
 Claude Code:
 
 ```
-/plugin marketplace add Kripu77/software-factory@v1.1.0
+/plugin marketplace add Kripu77/software-factory@v1.1.1
 /plugin install software-factory@software-factory
 ```
 
 Grok Build:
 
 ```
-grok plugin install Kripu77/software-factory@v1.1.0 --trust
+grok plugin install Kripu77/software-factory@v1.1.1 --trust
 ```
 
-Or add this repo as a marketplace at tag `v1.1.0`, then install software-factory.
+Or add this repo as a marketplace at tag `v1.1.1`, then install software-factory.
 
 Codex:
 
 ```
-codex plugin marketplace add Kripu77/software-factory@v1.1.0
+codex plugin marketplace add Kripu77/software-factory@v1.1.1
 codex plugin add software-factory@software-factory
 ```
 
 Cursor:
 
-Add GitHub marketplace `Kripu77/software-factory` at tag `v1.1.0`, then install software-factory.
+Add GitHub marketplace `Kripu77/software-factory` at tag `v1.1.1`, then install software-factory.
 
 `/lead` loads. So do the other factory commands. Codex gets the skills.
 
@@ -97,8 +97,8 @@ grok          # or claude
 The versioned pack is on GitHub Releases. Set plugin versions in `.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, `.grok-plugin/plugin.json`, and `.codex-plugin/plugin.json` to the tag without the `v`, then:
 
 ```bash
-git tag v1.1.0
-git push origin v1.1.0
+git tag v1.1.1
+git push origin v1.1.1
 ```
 
 Tag and push. A push to main does not cut a Release.
