@@ -36,6 +36,10 @@ need_text README.md "~/.local/bin"
 need_text README.md "git remote"
 need_text README.md "AGENTS.md"
 
+while IFS= read -r skill; do
+  [[ -f "$ROOT/skills/$skill/SKILL.md" ]] || fail "install.sh links missing skill $skill"
+done < <(sed -n 's/.*for skill in \(.*\); do/\1/p' "$ROOT/install.sh" | tr ' ' '\n')
+
 hid="$TMP/bin"
 mkdir -p "$hid"
 for cmd in bash mkdir ln rm echo grep command cat cp; do
