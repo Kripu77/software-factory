@@ -8,6 +8,7 @@ The runner is a plug. Grok, Claude Code, Codex, Cursor. Same `AGENTS.md`, same s
 
 Telemetry is a plug too. Not an error inbox. It answers whether a path broke or a feature died: signup, onboarding, checkout, invite, the core loop, a shipped screen nobody finishes. PostHog, Datadog, Azure App Insights, and CloudWatch all speak [`telemetry/CONTRACT.md`](telemetry/CONTRACT.md). Swap the vendor. Keep the questions.
 
+
 ![Software factory](docs/factory.png)
 
 
@@ -90,6 +91,7 @@ That creates `~/.factory/memory`, installs the plugin, and puts `factory` on `~/
 
 ```bash
 cd /path/to/your-checkout
+factory setup
 grok          # or claude
 /lead
 ```
@@ -141,12 +143,15 @@ Headless. Never merges.
 ./factory.sh qa --repo frontend --pr 12 --url http://localhost:3000
 ./factory.sh mem write --lane feature --status started --issue 12 --harness grok --summary "Add the memory store"
 ./factory.sh mem read --issue 12
+./factory.sh setup
 ./factory.sh config tracker linear --team ABC
 ./factory.sh config skills "euc-go: Go services" "euc-sql: migrations"
 ./factory.sh config
 ```
 
-`factory.sh config` sets a checkout up for the factory without hand-editing files. `config tracker github|linear [--team <linear-team-key>]` stores the issue tracker in `.factory/config`; github is the default when no config exists, and linear requires a team key. `config skills "<skill-name>: <when it applies>" [more...]` replaces `.factory/conventions` with those entries, one per line. `config` with no arguments prints the current tracker and skills. It targets `--repo <name>` under the workspace, or the checkout you run it from. Both files live under `.factory/`, which factory.sh adds to the checkout's `.git/info/exclude` so they stay out of source control.
+`factory setup` is the human path. From a product checkout it walks tracker and skills one stage at a time, shows a review, then writes through the same files as `factory.sh config`. Existing config is detected so you can update or keep it. Skip a section to keep the default. Cancel at the review leaves files unchanged. It needs a terminal; `NO_COLOR` or a dumb terminal stays usable without color or animation. No TTY: it prints the current config and exits. `--yes` is for workers, not this wizard.
+
+`factory.sh config` is the scriptable writer. `config tracker github|linear [--team <linear-team-key>]` stores the issue tracker in `.factory/config`; github is the default when no config exists, and linear requires a team key. `config skills "<skill-name>: <when it applies>" [more...]` replaces `.factory/conventions` with those entries, one per line. `config` with no arguments prints the current tracker and skills. It targets `--repo <name>` under the workspace, or the checkout you run it from. Both files live under `.factory/`, which factory.sh adds to the checkout's `.git/info/exclude` so they stay out of source control.
 
 `factory.sh ship` is an alias of `floor`. QA URL is `--url` or `FACTORY_QA_URL`. `--yes` is for workers. Lead stays interactive for quiz and for `blocked`.
 
