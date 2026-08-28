@@ -8,6 +8,8 @@ The runner is a plug. Grok, Claude Code, Codex, Cursor. Same `AGENTS.md`, same s
 
 Telemetry is a plug too. Not an error inbox. It answers whether a path broke or a feature died: signup, onboarding, checkout, invite, the core loop, a shipped screen nobody finishes. PostHog, Datadog, Azure App Insights, and CloudWatch all speak [`telemetry/CONTRACT.md`](telemetry/CONTRACT.md). Swap the vendor. Keep the questions.
 
+Issue tracking is a plug. GitHub is the default. Linear and Jira are names in `.factory/config`, not adapters in this repo. Point `FACTORY_TRACKER_CMD` at an MCP command that can `get` a ticket and `comment` on it. See [`tracker/CONTRACT.md`](tracker/CONTRACT.md). PRs, reviews, checks, and close-linked stay on GitHub.
+
 ![Software factory](docs/factory.png)
 
 
@@ -29,7 +31,7 @@ Two ledgers. Keep them apart.
 
 **Local.** `factory.sh mem write` and `mem read` hit `~/.factory/memory/factory.db`. The next `/bug` or `factory.sh feature` reads those rows at start. A worker writes `started` only if nothing is in progress, then `done`, `blocked`, or `failed`. If the db is missing, warn once and continue. Optional. Best-effort. Not git. Never `.env`.
 
-**GitHub.** On `done`, `blocked`, or `failed` (not `started`), the write leaves one GitHub comment. The body is the one-sentence summary. When a PR exists, a blank line, then a markdown link `[PR n](url)`. That comment is the public ledger. Tech lead reads GitHub when local memory has no rows. Memory is a hint, not a lock.
+**GitHub.** On `done`, `blocked`, or `failed` (not `started`), the write leaves one comment on the ticket. GitHub is the default. `FACTORY_TRACKER_CMD` sends that comment through the tracker plug instead. The body is the one-sentence summary. When a PR exists, a blank line, then a markdown link `[PR n](url)`. That comment is the public ledger. Tech lead reads GitHub when local memory has no rows. Memory is a hint, not a lock.
 
 Floor asks GitHub whether there is a PR, a review, and green checks. It asks local memory for `blocked` / `failed` and for "QA was skipped, no URL."
 
@@ -146,7 +148,7 @@ Headless. Never merges.
 ./factory.sh config
 ```
 
-`factory.sh config` sets a checkout up for the factory without hand-editing files. `config tracker github|linear [--team <linear-team-key>]` stores the issue tracker in `.factory/config`; github is the default when no config exists, and linear requires a team key. `config skills "<skill-name>: <when it applies>" [more...]` replaces `.factory/conventions` with those entries, one per line. `config` with no arguments prints the current tracker and skills. It targets `--repo <name>` under the workspace, or the checkout you run it from. Both files live under `.factory/`, which factory.sh adds to the checkout's `.git/info/exclude` so they stay out of source control.
+`factory.sh config` sets a checkout up for the factory without hand-editing files. `config tracker github|linear [--team <linear-team-key>]` stores the issue tracker in `.factory/config`; github is the default when no config exists, and linear requires a team key. That name is not an adapter. Add the GitHub, Linear, or Jira MCP connector to the harness, then set `FACTORY_TRACKER_CMD` to a command that speaks [`tracker/CONTRACT.md`](tracker/CONTRACT.md). `get <id>` prints the ticket. `comment <id> --body <text>` posts on it. The factory loads id, title, body, labels, url, and status and hands them to the lane. Lanes do not call GitHub issue APIs for ticket context. `config skills "<skill-name>: <when it applies>" [more...]` replaces `.factory/conventions` with those entries, one per line. `config` with no arguments prints the current tracker and skills. It targets `--repo <name>` under the workspace, or the checkout you run it from. Both files live under `.factory/`, which factory.sh adds to the checkout's `.git/info/exclude` so they stay out of source control.
 
 `factory.sh ship` is an alias of `floor`. QA URL is `--url` or `FACTORY_QA_URL`. `--yes` is for workers. Lead stays interactive for quiz and for `blocked`.
 

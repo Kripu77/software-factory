@@ -26,6 +26,7 @@ Usage:
 Never merges. A person merges.
 Workspace defaults to this directory. Owner and repo default from git remote origin. FACTORY_RUNNER if more than one of claude, codex, grok is on PATH.
 Memory: FACTORY_MEMORY_DB (default ~/.factory/memory/factory.db). Optional. Missing db warns and continues.
+Issue tracker: GitHub gh is the default. FACTORY_TRACKER_CMD is an MCP command that speaks tracker/CONTRACT.md (get <id>, comment <id> --body).
 EOF
   exit 1
 }
@@ -255,6 +256,125 @@ config_tracker() {
     printf 'tracker=github\n' > "$dir/.factory/config"
   fi
   config_show "$dir"
+}
+
+TRACKER="github"
+TRACKER_TEAM=""
+TRACKER_CMD=""
+TICKET_ID=""
+TICKET_TITLE=""
+TICKET_URL=""
+TICKET_STATUS=""
+TICKET_LABELS=""
+TICKET_BODY=""
+
+load_tracker() {
+  local dir="" line
+  TRACKER="github"
+  TRACKER_TEAM=""
+  TRACKER_CMD="${FACTORY_TRACKER_CMD:-}"
+  if [[ -n "${REPO:-}" && -d "$WORKSPACE/$REPO" ]]; then
+    dir="$(git -C "$WORKSPACE/$REPO" rev-parse --show-toplevel 2>/dev/null || true)"
+  fi
+  if [[ -z "$dir" ]]; then
+    dir="$(git rev-parse --show-toplevel 2>/dev/null || git -C "$WORKSPACE" rev-parse --show-toplevel 2>/dev/null || true)"
+  fi
+  [[ -n "$dir" && -f "$dir/.factory/config" ]] || return 0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    case "$line" in
+      tracker=*) TRACKER="${line#tracker=}" ;;
+      team=*) TRACKER_TEAM="${line#team=}" ;;
+    esac
+  done < "$dir/.factory/config"
+}
+
+parse_ticket_record() {
+  local in_body=0 line unstructured=1
+  TICKET_ID=""
+  TICKET_TITLE=""
+  TICKET_URL=""
+  TICKET_STATUS=""
+  TICKET_LABELS=""
+  TICKET_BODY=""
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ "$in_body" -eq 1 ]]; then
+      if [[ -n "$TICKET_BODY" ]]; then
+        TICKET_BODY+=$'\n'"$line"
+      else
+        TICKET_BODY="$line"
+      fi
+      continue
+    fi
+    case "$line" in
+      id=*) TICKET_ID="${line#id=}"; unstructured=0 ;;
+      title=*) TICKET_TITLE="${line#title=}"; unstructured=0 ;;
+      url=*) TICKET_URL="${line#url=}"; unstructured=0 ;;
+      status=*) TICKET_STATUS="${line#status=}"; unstructured=0 ;;
+      labels=*)
+        TICKET_LABELS="${line#labels=}"
+        TICKET_LABELS="${TICKET_LABELS%,}"
+        unstructured=0
+        ;;
+      body:*)
+        in_body=1
+        TICKET_BODY="${line#body:}"
+        TICKET_BODY="${TICKET_BODY# }"
+        unstructured=0
+        ;;
+      body=*)
+        in_body=1
+        TICKET_BODY="${line#body=}"
+        unstructured=0
+        ;;
+    esac
+  done <<< "$1"
+  if [[ "$unstructured" -eq 1 ]]; then
+    TICKET_LABELS=""
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      [[ -n "$line" ]] || continue
+      TICKET_LABELS+="${TICKET_LABELS:+,}$line"
+    done <<< "$1"
+  fi
+}
+
+github_ticket_get() {
+  command -v gh >/dev/null 2>&1 || return 1
+  [[ -n "${OWNER:-}" && -n "${REPO:-}" && -n "${ISSUE:-}" ]] || return 1
+  gh issue view "$ISSUE" -R "${OWNER}/${REPO}" --json number,title,body,labels,url,state --template $'id={{.number}}\ntitle={{.title}}\nurl={{.url}}\nstatus={{.state}}\nlabels={{range .labels}}{{.name}},{{end}}\nbody:\n{{.body}}\n' 2>/dev/null
+}
+
+ticket_get() {
+  local raw=""
+  TICKET_ID="${ISSUE:-}"
+  TICKET_TITLE=""
+  TICKET_URL=""
+  TICKET_STATUS=""
+  TICKET_LABELS=""
+  TICKET_BODY=""
+  [[ -n "${ISSUE:-}" ]] || return 1
+  load_tracker
+  if [[ -n "$TRACKER_CMD" ]]; then
+    raw="$("$TRACKER_CMD" get "$ISSUE" 2>/dev/null || true)"
+  elif [[ "$TRACKER" == github ]]; then
+    raw="$(github_ticket_get || true)"
+  else
+    return 0
+  fi
+  [[ -n "$raw" ]] || return 0
+  parse_ticket_record "$raw"
+  [[ -n "$TICKET_ID" ]] || TICKET_ID="$ISSUE"
+}
+
+ticket_context() {
+  ticket_get || true
+  local out=""
+  out="id: ${TICKET_ID:-${ISSUE:-}}"
+  [[ -z "$TICKET_TITLE" ]] || out+=$'\n'"title: $TICKET_TITLE"
+  [[ -z "$TICKET_URL" ]] || out+=$'\n'"url: $TICKET_URL"
+  [[ -z "$TICKET_STATUS" ]] || out+=$'\n'"status: $TICKET_STATUS"
+  [[ -z "$TICKET_LABELS" ]] || out+=$'\n'"labels: $TICKET_LABELS"
+  [[ -z "$TICKET_BODY" ]] || out+=$'\n\n'"$TICKET_BODY"
+  printf '%s\n' "$out"
 }
 
 config_skills() {
@@ -685,21 +805,34 @@ ticket_comment() {
     *) return 0 ;;
   esac
   [[ -n "${SUMMARY:-}" ]] || return 0
-  [[ -n "${OWNER:-}" && -n "${REPO:-}" ]] || return 0
   [[ -n "${ISSUE:-}" || -n "${PR:-}" ]] || return 0
-  command -v gh >/dev/null 2>&1 || { warn_mem "gh not installed"; return 0; }
   body="$SUMMARY"
-  if [[ -n "${PR:-}" ]]; then
+  if [[ -n "${PR:-}" && -n "${OWNER:-}" && -n "${REPO:-}" ]]; then
     body+=$'\n\n'"[PR ${PR}]($(pr_url "$PR"))"
   fi
   err="$(mktemp)"
   set +e
   if [[ -n "${ISSUE:-}" ]]; then
-    gh issue comment "$ISSUE" -R "${OWNER}/${REPO}" --body "$body" >/dev/null 2>"$err"
+    load_tracker
+    if [[ -n "$TRACKER_CMD" ]]; then
+      "$TRACKER_CMD" comment "$ISSUE" --body "$body" >/dev/null 2>"$err"
+      code=$?
+    elif [[ "$TRACKER" == github ]]; then
+      [[ -n "${OWNER:-}" && -n "${REPO:-}" ]] || { rm -f "$err"; return 0; }
+      command -v gh >/dev/null 2>&1 || { warn_mem "gh not installed"; rm -f "$err"; return 0; }
+      gh issue comment "$ISSUE" -R "${OWNER}/${REPO}" --body "$body" >/dev/null 2>"$err"
+      code=$?
+    else
+      warn_mem "Need FACTORY_TRACKER_CMD to comment on tracker $TRACKER"
+      rm -f "$err"
+      return 0
+    fi
   else
+    [[ -n "${OWNER:-}" && -n "${REPO:-}" ]] || { rm -f "$err"; return 0; }
+    command -v gh >/dev/null 2>&1 || { warn_mem "gh not installed"; rm -f "$err"; return 0; }
     gh pr comment "$PR" -R "${OWNER}/${REPO}" --body "$body" >/dev/null 2>"$err"
+    code=$?
   fi
-  code=$?
   set -e
   if [[ $code -ne 0 ]]; then
     warn_mem "$(cat "$err")"
@@ -831,15 +964,17 @@ run_mem_lane() {
 }
 
 floor_classify() {
-  local name
-  command -v gh >/dev/null 2>&1 || { printf '%s\n' feature; return 0; }
-  [[ -n "$OWNER" && -n "$REPO" ]] || { printf '%s\n' feature; return 0; }
-  while IFS= read -r name; do
+  local name labels
+  ticket_get || true
+  labels="${TICKET_LABELS:-}"
+  [[ -n "$labels" ]] || { printf '%s\n' feature; return 0; }
+  labels="${labels//,/ }"
+  for name in $labels; do
     case "$name" in
       bug) printf '%s\n' bug; return 0 ;;
       documentation|docs) printf '%s\n' docs; return 0 ;;
     esac
-  done < <(gh issue view "$ISSUE" -R "${OWNER}/${REPO}" --json labels --template '{{range .labels}}{{.name}}{{"\n"}}{{end}}' 2>/dev/null || true)
+  done
   printf '%s\n' feature
 }
 
@@ -1074,7 +1209,7 @@ case "$LANE" in
     RULES="$(cat "$FACTORY/lanes/${LANE}.md")"$'\n'"$HARD"
     CONVENTIONS="$(conventions_rules "$DIR")"
     [[ -z "$CONVENTIONS" ]] || RULES+=$'\n'"$CONVENTIONS"
-    run_mem_lane "$LANE" "$DIR" "$RULES" "Implement GitHub issue $(issue_url "$ISSUE") in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."
+    run_mem_lane "$LANE" "$DIR" "$RULES" "Implement this ticket in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."$'\n\n'"$(ticket_context)"
     exit $?
     ;;
   review)
@@ -1106,7 +1241,12 @@ case "$LANE" in
   lead|tech-lead|cto)
     need_issue
     mem_read_context
-    prompt="Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}. After tickets exist, start factory.sh floor --repo ${REPO:-<repo>} --issue ${ISSUE} (or one factory.sh lane). Dispatch is factory.sh only. Writing product code, leaving a review, or watching CI in this session is a failed run."
+    load_tracker
+    prompt="Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}. After tickets exist, start factory.sh floor --repo ${REPO:-<repo>} --issue ${ISSUE} (or one factory.sh lane). Dispatch is factory.sh only. Writing product code, leaving a review, or watching CI in this session is a failed run. PRs stay on GitHub."
+    if [[ "$TRACKER" != github ]]; then
+      prompt+=$'\n'"Publish new tickets on the configured tracker, not GitHub issues."
+    fi
+    prompt+=$'\n\n'"$(ticket_context)"
     if [[ -n "${MEM_CONTEXT:-}" ]]; then
       prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
     fi
