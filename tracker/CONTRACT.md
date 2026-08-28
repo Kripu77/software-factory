@@ -2,7 +2,7 @@
 
 The factory does not own an issue tracker. It loads a ticket and comments on it through one plug.
 
-GitHub is the default. `gh` implements the plug. Linear and Jira are names in `.factory/config`, not adapters in this repo.
+GitHub is the default. `gh` implements the plug. `config tracker` writes github or linear into `.factory/config`. For Linear or Jira, export `FACTORY_TRACKER_CMD`. This repo does not ship those adapters.
 
 PRs, reviews, checks, and close-linked-on-merge stay on GitHub.
 

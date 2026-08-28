@@ -8,7 +8,7 @@ The runner is a plug. Grok, Claude Code, Codex, Cursor. Same `AGENTS.md`, same s
 
 Telemetry is a plug too. Not an error inbox. It answers whether a path broke or a feature died: signup, onboarding, checkout, invite, the core loop, a shipped screen nobody finishes. PostHog, Datadog, Azure App Insights, and CloudWatch all speak [`telemetry/CONTRACT.md`](telemetry/CONTRACT.md). Swap the vendor. Keep the questions.
 
-Issue tracking is a plug. GitHub is the default. Linear and Jira are names in `.factory/config`, not adapters in this repo. Point `FACTORY_TRACKER_CMD` at an MCP command that can `get` a ticket and `comment` on it. See [`tracker/CONTRACT.md`](tracker/CONTRACT.md). PRs, reviews, checks, and close-linked stay on GitHub.
+Issue tracking is a plug. GitHub is the default. `factory.sh config tracker github|linear` writes a name to `.factory/config`. Point `FACTORY_TRACKER_CMD` at an MCP command that can `get` a ticket and `comment` on it, including a Linear or Jira connector. See [`tracker/CONTRACT.md`](tracker/CONTRACT.md). PRs, reviews, checks, and close-linked stay on GitHub.
 
 ![Software factory](docs/factory.png)
 

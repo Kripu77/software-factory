@@ -187,7 +187,117 @@ if [[ -f "$DUMP/gh" ]] && grep -q "issue view" "$DUMP/gh"; then
   fail "tracker linear must not gh issue view: $(cat "$DUMP/gh")"
 fi
 grep -q "ABC-123" "$DUMP/prompt" || fail "linear name should still pass the ticket id: $(cat "$DUMP/prompt")"
+
+# Lead still publishes GitHub issues; ticket_context is extra context only
+reset_dump
+cat > "$TMP/bin/runner" << 'EOF'
+#!/usr/bin/env bash
+dump="${FAKE_DUMP:?}"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -p)
+      if [[ ! -f "$dump/prompt" ]]; then
+        printf '%s\n' "$2" > "$dump/prompt"
+      fi
+      shift 2
+      ;;
+    --rules)
+      if [[ ! -f "$dump/rules" ]]; then
+        printf '%s\n' "$2" > "$dump/rules"
+      fi
+      shift 2
+      ;;
+    *) shift ;;
+  esac
+done
+: > "$dump/ran"
+exit 0
+EOF
+chmod +x "$TMP/bin/runner"
+run_env "$FACTORY" lead --repo widgets --issue ABC-123 >"$TMP/lout" 2>"$TMP/lerr" || true
+[[ -f "$DUMP/prompt" ]] || fail "lead should still run on tracker linear, err=$(cat "$TMP/lerr")"
+grep -q "Publish new tickets on the configured tracker" "$DUMP/prompt" && fail "lead must not change ticket publish workflow: $(cat "$DUMP/prompt")"
+grep -q "ABC-123" "$DUMP/prompt" || fail "lead should still receive ticket context: $(cat "$DUMP/prompt")"
+grep -q "Publish new tickets on the configured tracker" "$FACTORY" && fail "lead must not tell the agent to publish on the configured tracker"
+cat > "$TMP/bin/runner" << 'EOF'
+#!/usr/bin/env bash
+dump="${FAKE_DUMP:?}"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -p) printf '%s\n' "$2" > "$dump/prompt"; shift 2 ;;
+    --rules) printf '%s\n' "$2" > "$dump/rules"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+: > "$dump/ran"
+exit 0
+EOF
+chmod +x "$TMP/bin/runner"
 rm -rf "$WS/widgets/.factory"
+
+# Dead FACTORY_TRACKER_CMD must warn and must not invent a ticket
+reset_dump
+cat > "$TMP/bin/dead-tracker" << 'EOF'
+#!/usr/bin/env bash
+echo "tracker down" >&2
+exit 1
+EOF
+chmod +x "$TMP/bin/dead-tracker"
+FACTORY_TRACKER_CMD="$TMP/bin/dead-tracker" run_env "$FACTORY" feature --repo widgets --issue ABC-123 >"$TMP/out" 2>"$TMP/err"
+grep -q "tracker down" "$TMP/err" || fail "dead tracker get should warn with the plug error: $(cat "$TMP/err")"
+if [[ -f "$DUMP/prompt" ]] && grep -q "title:" "$DUMP/prompt"; then
+  fail "dead get should not invent ticket fields: $(cat "$DUMP/prompt")"
+fi
+
+# Unstructured gh output is not a ticket record
+reset_dump
+cat > "$TMP/bin/gh" << 'EOF'
+#!/usr/bin/env bash
+dump="${FAKE_DUMP:?}"
+printf '%s\n' "$*" >> "$dump/gh"
+case "$1 $2" in
+  "issue view")
+    printf '%s\n' 'ready-for-agent'
+    printf '%s\n' 'enhancement'
+    ;;
+  "issue comment") exit 0 ;;
+esac
+exit 0
+EOF
+chmod +x "$TMP/bin/gh"
+run_env "$FACTORY" feature --repo widgets --issue 6 >"$TMP/out" 2>"$TMP/err"
+[[ -f "$DUMP/prompt" ]] || fail "unstructured gh should still run feature"
+grep -q "labels:" "$DUMP/prompt" && fail "unstructured lines must not become labels: $(cat "$DUMP/prompt")"
+cat > "$TMP/bin/gh" << 'EOF'
+#!/usr/bin/env bash
+dump="${FAKE_DUMP:?}"
+printf '%s\n' "$*" >> "$dump/gh"
+cmd1="${1:-}"
+cmd2="${2:-}"
+body=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --body) body="${2:-}"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+if [[ -n "$body" ]]; then
+  printf '%s\n' "$body" > "$dump/comment-body"
+fi
+case "$cmd1 $cmd2" in
+  "issue view")
+    printf '%s\n' 'id=6'
+    printf '%s\n' 'title=Add widgets list'
+    printf '%s\n' 'url=https://github.com/acme/widgets/issues/6'
+    printf '%s\n' 'status=open'
+    printf '%s\n' 'labels=enhancement,ready-for-agent'
+    printf '%s\n' 'body:'
+    printf '%s\n' 'Ship a list of widgets.'
+    ;;
+esac
+exit 0
+EOF
+chmod +x "$TMP/bin/gh"
 
 # Floor classification uses plug labels, not a raw gh issue call, when MCP is set
 reset_dump
@@ -207,6 +317,35 @@ if [[ -f "$DUMP/gh" ]] && grep -q "issue view" "$DUMP/gh"; then
   fail "floor must not gh issue view when MCP is set: $(cat "$DUMP/gh")"
 fi
 grep -q "pr view" "$DUMP/gh" || fail "PRs stay on GitHub: $(cat "$DUMP/gh" 2>/dev/null || true)"
+
+# A label with spaces is not word-split into a fake bug
+reset_dump
+cat > "$TMP/bin/mcp-spaces" << 'EOF'
+#!/usr/bin/env bash
+dump="${FAKE_DUMP:?}"
+printf '%s\n' "$*" >> "$dump/mcp"
+case "${1:-}" in
+  get)
+    printf '%s\n' "id=${2:-}"
+    printf '%s\n' 'title=Not a bug'
+    printf '%s\n' 'url=https://example/issues/9'
+    printf '%s\n' 'status=open'
+    printf '%s\n' 'labels=not a bug,ready-for-agent'
+    printf '%s\n' 'body:'
+    printf '%s\n' 'Keep the spaces.'
+    ;;
+  comment) ;;
+esac
+exit 0
+EOF
+chmod +x "$TMP/bin/mcp-spaces"
+set +e
+FACTORY_TRACKER_CMD="$TMP/bin/mcp-spaces" run_env "$FACTORY" floor --repo widgets --issue 9 >"$TMP/sout" 2>"$TMP/serr"
+set -e
+grep -q "dispatch feature" "$TMP/sout" || fail "label 'not a bug' should classify as feature: $(cat "$TMP/sout")"
+if grep -q "dispatch bug" "$TMP/sout"; then
+  fail "word-split labels classified 'not a bug' as bug: $(cat "$TMP/sout")"
+fi
 
 # close-linked stays GitHub-on-merge
 close_fn="$(fn_body close_linked_issues)"
@@ -233,5 +372,20 @@ fi
 grep -qi "MCP" "$ROOT/README.md" || fail "README should document issue-tracking MCP connectors"
 grep -q "FACTORY_TRACKER_CMD" "$ROOT/README.md" || fail "README should document FACTORY_TRACKER_CMD"
 [[ -f "$ROOT/tracker/CONTRACT.md" ]] || fail "tracker/CONTRACT.md should describe the ticket plug"
+grep -q 'Jira are names in' "$ROOT/README.md" && fail "config tracker is github|linear; Jira is FACTORY_TRACKER_CMD only"
+grep -q 'Jira are names in' "$ROOT/tracker/CONTRACT.md" && fail "config tracker is github|linear; Jira is FACTORY_TRACKER_CMD only"
+
+# Plug runtime lives next to the contract, not in factory.sh
+[[ -f "$ROOT/tracker/tracker.sh" ]] || fail "get/parse/comment should live next to tracker/CONTRACT.md"
+grep -q 'tracker/tracker.sh' "$FACTORY" || fail "factory.sh should call tracker/tracker.sh"
+if grep -q 'parse_ticket_record' "$FACTORY"; then
+  fail "ticket parse should live in tracker/tracker.sh, not factory.sh"
+fi
+if grep -q 'github_ticket_get' "$FACTORY"; then
+  fail "github get should live in tracker/tracker.sh, not factory.sh"
+fi
+if grep -q 'TRACKER_TEAM' "$FACTORY" "$ROOT/tracker/tracker.sh"; then
+  fail "TRACKER_TEAM is unused until something reads it"
+fi
 
 echo "ok tracker"

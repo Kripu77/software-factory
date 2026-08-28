@@ -73,8 +73,13 @@ if [[ -f "$dump/dispatched" ]]; then
 fi
 case "$1 $2" in
   "issue view")
-    printf '%s\n' 'ready-for-agent'
-    printf '%s\n' 'enhancement'
+    printf '%s\n' 'id=7'
+    printf '%s\n' 'title=Add widgets list'
+    printf '%s\n' 'url=https://github.com/acme/widgets/issues/7'
+    printf '%s\n' 'status=open'
+    printf '%s\n' 'labels=ready-for-agent,enhancement'
+    printf '%s\n' 'body:'
+    printf '%s\n' 'Ship a list of widgets.'
     ;;
   "pr view")
     if [[ "$*" == *reviews* ]]; then
