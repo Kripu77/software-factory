@@ -325,7 +325,7 @@ run_agent() {
   esac
 }
 
-HARD='Never merge. Never gh pr merge. Never git commit --no-verify. Never read .env or .env.local. Only the given ticket or PR. New branch off main. Do not wreck other local branches. PR title Type/<issue.number>/<short description> with Type in Feat Bug Arch Chore Refactor General. Description human, at most 3 sentences. Read CONTEXT-MAP.md, CONTEXT.md, ADRs, docs/agents before exploring. Missing CONTEXT.md: continue silently. Before writing code find a similar, recently-merged example in this repo (a file or PR doing the same kind of thing) and match its patterns. No example: say so in the PR description.'
+HARD='Never merge. Never gh pr merge. Never git commit --no-verify. Never read .env or .env.local. Only the given ticket or PR. New branch off main. Do not wreck other local branches. PR title Type/<issue.number>/<short description> with Type in Feat Bug Arch Chore Refactor General. Description human, at most 3 sentences, then mermaid. Feature: before and after when a prior shape exists, after-only when net-new. Bug: before and after. Review requests changes when those diagrams are missing. Read CONTEXT-MAP.md, CONTEXT.md, ADRs, docs/agents before exploring. Missing CONTEXT.md: continue silently. Before writing code find a similar, recently-merged example in this repo (a file or PR doing the same kind of thing) and match its patterns. No example: say so in the PR description.'
 
 YESFLAG=()
 if [[ "$YES" -eq 1 ]]; then

@@ -15,7 +15,7 @@ Use glossary terms from `CONTEXT.md`. Do not invent synonyms. Missing `CONTEXT.m
 
 ## Skills
 
-`/tdd`, `/implement`, `/unslop` for product code.
+`/tdd`, `/implement`, `/unslop` for product code. `/mermaid` when writing a feature, bug, or docs PR.
 `/code-review` only when reviewing.
 `/loop-on-ci` only when watching PR checks.
 `/to-tickets` only when breaking work into GitHub issues.
@@ -26,7 +26,7 @@ Use glossary terms from `CONTEXT.md`. Do not invent synonyms. Missing `CONTEXT.m
 - Before writing code, find a similar, recently-merged example in this repo (a file or PR doing the same kind of thing) and match its patterns. If none exists, say so in the PR description.
 - New branch off `main`. Do not wreck other local branches or worktrees.
 - PR title: `Type/<issue.number>/<short description>` where Type is Feat, Bug, Arch, Chore, Refactor, or General.
-- PR description: human, at most 3 sentences. Reference the ticket. Do not `Closes` until every slice has landed.
+- PR description: human, at most 3 sentences, then mermaid. Feature: before and after when a prior shape exists, after-only when net-new. Bug: before and after. Reference the ticket. Do not `Closes` until every slice has landed.
 - Never merge. Never `gh pr merge`. Never `--no-verify`.
 - Never read `.env` or `.env.local`. Never store `.env` contents in factory memory.
 - Never attribute factory code to other products.

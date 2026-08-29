@@ -4,5 +4,5 @@ At start, factory.sh mem read for this PR. Write started only if that read shows
 
 Run /code-review on the given PR only.
 If the rules list this repo's conventions skills, invoke each listed skill and flag every violation of its conventions as a review comment.
-Do not implement. Do not merge. Leave GitHub review comments.
+Do not implement. Do not merge. Leave GitHub review comments. Request changes when the required mermaid diagrams are missing.
 When your job is done, factory.sh mem write done, blocked, or failed from the outcome. Then report back to Tech lead: what you did, PR or issue URL, evidence, what should happen next. Do not dispatch the next lane yourself.
