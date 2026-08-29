@@ -99,15 +99,12 @@ need_text AGENTS.md "Bug: before and after"
 need_text skills/implement/SKILL.md "Bug: before and after"
 
 # Feature, bug, and docs lanes invoke mermaid when they write a PR
-need_text lanes/feature.md "/mermaid"
-need_text lanes/bug.md "/mermaid"
-need_text lanes/docs.md "/mermaid"
-need_text commands/feature.md "/mermaid"
-need_text commands/bug.md "/mermaid"
-need_text commands/docs.md "/mermaid"
-need_text lanes/feature.md "PR"
-need_text lanes/bug.md "PR"
-need_text lanes/docs.md "PR"
+need_text lanes/feature.md "Use /mermaid when you write a PR"
+need_text lanes/bug.md "Use /mermaid when you write a PR"
+need_text lanes/docs.md "Use /mermaid when you write a PR"
+need_text commands/feature.md "Use /mermaid when you write a PR"
+need_text commands/bug.md "Use /mermaid when you write a PR"
+need_text commands/docs.md "Use /mermaid when you write a PR"
 
 # Review requests changes when required diagrams are missing
 need_text lanes/review.md "mermaid"
