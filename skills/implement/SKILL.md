@@ -37,5 +37,5 @@ gh api graphql -f query='mutation($id:ID!,$body:String!){addPullRequestReviewThr
 - Do not refactor adjacent code unless the ticket says so
 - No type assertions; follow local TypeScript/Go practice
 - PR title: `Type/<issue.number>/<short description>` (Feat, Bug, Arch, Chore, Refactor, General)
-- PR description: human, at most 3 sentences
+- PR description: human, at most 3 sentences. Use short paragraphs with a blank line between them. A blank line before any list or fence. Cite the ticket as a markdown link. A line never starts with #n.
 - Never merge. A person merges.
