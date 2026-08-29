@@ -27,7 +27,7 @@ Use glossary terms from `CONTEXT.md`. Do not invent synonyms. Missing `CONTEXT.m
 - New branch off `main`. Do not wreck other local branches or worktrees.
 - PR title: `Type/<issue.number>/<short description>` where Type is Feat, Bug, Arch, Chore, Refactor, or General.
 - PR description: human, at most 3 sentences, then mermaid. Feature: before and after when a prior shape exists, after-only when net-new. Bug: before and after. Use short paragraphs with a blank line between them. A blank line before any list or fence. Cite the ticket as a markdown link. A line never starts with #n. Do not `Closes` until every slice has landed.
-- After-state mermaid also lands in the product repo docs tree in the same PR. Update the existing page for that subsystem. Do not add a new file per PR. README or QUICKSTART only when the diagram is user-facing: first-run, signal path, or a flow a human runs. Internals stay in docs. Bug before-state stays on the PR.
+- After-state mermaid also lands in the product repo docs tree in the same PR. Update the existing page for that subsystem. Do not add a new file per PR. If the bug revealed a missing architecture page, add that page and persist only the corrected after-state. README or QUICKSTART only when the diagram is user-facing: first-run, signal path, or a flow a human runs. Internals stay in docs. Bug before-state stays on the PR.
 - New issue comments a lane writes use the same spacing. Ledger mem-write comments stay one sentence, a blank line, then a markdown PR link. Do not rewrite old PRs.
 - Never merge. Never `gh pr merge`. Never `--no-verify`.
 - Never read `.env` or `.env.local`. Never store `.env` contents in factory memory.
@@ -40,7 +40,13 @@ flowchart TD
   after --> face{User-facing?}
   face -->|yes| readme[README or QUICKSTART]
   face -->|no| page
+  after --> arch{Missing architecture page?}
+  arch -->|yes| addPage[Add the page]
+  arch -->|no| page
   before[Bug before-state] --> pr[PR only]
+  review[Review] --> gap{After-state belongs in docs and is missing?}
+  gap -->|yes| changes[Request changes]
+  gap -->|no| comments[Review comments]
 ```
 
 ## Lanes

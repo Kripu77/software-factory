@@ -3,7 +3,7 @@ name: feature
 description: Implement a ready-for-agent feature ticket in this checkout. Do not expand the ask.
 ---
 
-Read `lanes/feature.md` and `AGENTS.md`. Follow /tdd, /implement, /unslop. Use /mermaid when you write a PR. Put the after-state mermaid on the existing docs page in the same PR.
+Read `lanes/feature.md` and `AGENTS.md`. Follow /tdd, /implement, /unslop. Use /mermaid when you write a PR. Put the after-state mermaid on the existing docs page in the same PR. No per-PR copy. README or QUICKSTART only when the diagram is user-facing.
 
 At start, factory.sh mem read for this issue. Write started only if that read shows no in-progress feature run: factory.sh mem write --lane feature --status started --harness <claude|cursor|codex|grok> --issue <n>. At the end, factory.sh mem write --lane feature --status done|blocked|failed --harness <claude|cursor|codex|grok> --issue <n> --summary "<one sentence>" --evidence <url-or-path> --next-steps "<what should happen next>". That write comments on the GitHub issue. started does not. Missing memory or a comment failure: warn once and continue.
 

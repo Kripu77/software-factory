@@ -114,6 +114,24 @@ need_text commands/review.md "mermaid"
 need_text commands/review.md "missing"
 need_text factory.sh "Review requests changes"
 
+# After-state mermaid persists into the product docs tree
+need_text factory.sh "docs tree"
+need_text factory.sh "after-state belongs in docs"
+need_text factory.sh "missing architecture page"
+need_text factory.sh "persist only the corrected after-state"
+need_text AGENTS.md "docs tree"
+need_text AGENTS.md "missing architecture page"
+need_text AGENTS.md "persist only the corrected after-state"
+need_text skills/implement/SKILL.md "docs tree"
+need_text skills/implement/SKILL.md "missing architecture page"
+need_text skills/implement/SKILL.md "persist only the corrected after-state"
+need_text lanes/review.md "after-state belongs in docs"
+need_text commands/review.md "after-state belongs in docs"
+need_text lanes/feature.md "No per-PR copy"
+need_text lanes/feature.md "user-facing"
+need_text lanes/bug.md "No per-PR copy"
+need_text lanes/bug.md "user-facing"
+
 WS="$TMP/workspace"
 mkdir -p "$WS/widgets"
 git -C "$WS/widgets" init -q
@@ -161,6 +179,10 @@ assert_rules() {
   grep -q "at most 3 sentences" "$DUMP/rules" || fail "$lane rules missing 3-sentence cap"
   grep -q "then mermaid" "$DUMP/rules" || fail "$lane rules missing mermaid-after-prose"
   grep -q "/mermaid" "$DUMP/rules" || fail "$lane rules missing /mermaid"
+  grep -q "docs tree" "$DUMP/rules" || fail "$lane rules missing persist-into-docs"
+  grep -q "missing architecture page" "$DUMP/rules" || fail "$lane rules missing missing-page exception"
+  grep -q "No per-PR copy" "$DUMP/rules" || fail "$lane rules missing no-per-PR-copy"
+  grep -q "user-facing" "$DUMP/rules" || fail "$lane rules missing README-versus-docs"
 }
 
 assert_rules feature --issue 6
@@ -175,6 +197,7 @@ grep -q "at most 3 sentences" "$DUMP/rules" || fail "review rules missing 3-sent
 grep -q "then mermaid" "$DUMP/rules" || fail "review rules missing mermaid-after-prose"
 grep -q "Request changes" "$DUMP/rules" || fail "review rules missing request-changes"
 grep -q "missing" "$DUMP/rules" || fail "review rules missing diagrams-missing"
+grep -q "after-state belongs in docs" "$DUMP/rules" || fail "review rules missing persist request-changes"
 grep -q "Never merge" "$DUMP/rules" || fail "review rules must still say never merge"
 
 echo "ok mermaid"

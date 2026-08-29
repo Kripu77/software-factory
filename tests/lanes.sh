@@ -52,8 +52,8 @@ playbook() {
   need_text "commands/${cmd}.md" "--evidence"
   need_text "commands/${cmd}.md" "--next-steps"
   need_text "commands/${cmd}.md" "comment"
-  bytes_under "lanes/${lane}.md" 1000
-  bytes_under "commands/${cmd}.md" 1000
+  bytes_under "lanes/${lane}.md" 1200
+  bytes_under "commands/${cmd}.md" 1200
   if grep -q -- "--summary" "$ROOT/lanes/${lane}.md"; then
     fail "put mem flags in /${cmd}, not ${lane} lane"
   fi

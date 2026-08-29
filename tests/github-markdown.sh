@@ -33,14 +33,20 @@ done
 need_text factory.sh "wall of text"
 need_text factory.sh "Review requests changes"
 need_text factory.sh "those diagrams are missing"
+need_text factory.sh "docs tree"
+need_text factory.sh "after-state belongs in docs"
+need_text factory.sh "missing architecture page"
+need_text factory.sh "persist only the corrected after-state"
 need_text lanes/review.md "Request changes"
 need_text lanes/review.md "wall of text"
 need_text lanes/review.md "mermaid"
 need_text lanes/review.md "missing"
+need_text lanes/review.md "after-state belongs in docs"
 need_text commands/review.md "Request changes"
 need_text commands/review.md "wall of text"
 need_text commands/review.md "mermaid"
 need_text commands/review.md "missing"
+need_text commands/review.md "after-state belongs in docs"
 need_text factory.sh "review summary may use headings"
 need_text AGENTS.md "review summary may use headings"
 need_text lanes/review.md "review summary may use headings"
@@ -99,6 +105,7 @@ assert_gfm_rules() {
   grep -q "blank line before any list or fence" "$DUMP/rules" || fail "$lane rules missing blank-line-before-list-or-fence"
   grep -q "starts with #n" "$DUMP/rules" || fail "$lane rules missing #n heading ban"
   grep -q "markdown link" "$DUMP/rules" || fail "$lane rules missing markdown ticket link"
+  grep -q "docs tree" "$DUMP/rules" || fail "$lane rules missing persist-into-docs"
 }
 
 assert_gfm_rules feature --issue 6
@@ -118,6 +125,7 @@ grep -q "markdown link" "$DUMP/rules" || fail "review rules missing markdown tic
 grep -q "Request changes" "$DUMP/rules" || fail "review rules missing request-changes"
 grep -q "wall of text" "$DUMP/rules" || fail "review rules missing wall-of-text"
 grep -q "missing" "$DUMP/rules" || fail "review rules missing diagrams-missing"
+grep -q "after-state belongs in docs" "$DUMP/rules" || fail "review rules missing persist request-changes"
 grep -q "review summary may use headings" "$DUMP/rules" || fail "review rules missing review-summary-headings"
 grep -q "Never merge" "$DUMP/rules" || fail "review rules must still say never merge"
 
