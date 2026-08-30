@@ -26,8 +26,8 @@ for f in factory.sh AGENTS.md skills/implement/SKILL.md; do
 done
 
 need_text lanes/review.md "Request changes"
-need_text lanes/review.md "one bulk commit"
-need_text AGENTS.md "one bulk commit"
+need_text lanes/review.md "one commit that is the whole ticket"
+need_text AGENTS.md "one commit that is the whole ticket"
 
 WS="$TMP/workspace"
 mkdir -p "$WS/widgets"
@@ -94,7 +94,7 @@ grep -q "Keep the diff small" "$DUMP/rules" || fail "review rules missing Keep t
 grep -q "split the ticket" "$DUMP/rules" || fail "review rules missing split the ticket"
 grep -q "No line-count cap" "$DUMP/rules" || fail "review rules missing No line-count cap"
 grep -q "Request changes" "$DUMP/rules" || fail "review rules missing request-changes"
-grep -q "one bulk commit" "$DUMP/rules" || fail "review rules missing one bulk commit"
+grep -q "one commit that is the whole ticket" "$DUMP/rules" || fail "review rules missing whole-ticket bulk definition"
 grep -q "Never merge" "$DUMP/rules" || fail "review rules must still say never merge"
 
 echo "ok atomic-commits"
