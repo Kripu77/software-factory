@@ -28,6 +28,7 @@ done
 need_text lanes/review.md "Request changes"
 need_text lanes/review.md "one commit that is the whole ticket"
 need_text AGENTS.md "one commit that is the whole ticket"
+need_text AGENTS.md "Whole-ticket dump"
 
 WS="$TMP/workspace"
 mkdir -p "$WS/widgets"
