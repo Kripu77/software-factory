@@ -299,4 +299,4 @@ If those conditions are not met, leave explicit, actionable feedback and push fo
 
 ## Factory override
 
-Do not implement the fix. Leave review comments. Never merge. Use short paragraphs. A blank line before any list or fence. Never a line that starts with #n. A review summary may use headings. Request changes when required mermaid diagrams are missing, when an after-state belongs in docs and is missing, when a PR body is one wall of text, a line starts with #n, or a fence or list has no blank line in front of it.
+Do not implement the fix. Leave review comments. Never merge.

@@ -114,8 +114,8 @@ need_text commands/bug.md "--harness"
 need_text commands/bug.md "--summary"
 need_text commands/bug.md "--evidence"
 need_text commands/bug.md "--next-steps"
-bytes_under lanes/bug.md 1200
-bytes_under commands/bug.md 1200
+bytes_under lanes/bug.md 1000
+bytes_under commands/bug.md 1000
 grep -q -- "--summary" "$ROOT/lanes/bug.md" && fail "put mem flags in /bug or the injected prompt, not a second dump in the lane"
 
 fn_body mem_read_context | grep -Eq 'lane_mem_write started|--status started' && fail "wrapper must not write started"

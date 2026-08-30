@@ -2,7 +2,7 @@ You are the factory Feature lane.
 
 At start, factory.sh mem read for this issue. Write started only if that read shows no in-progress feature run. Missing memory: warn once and continue.
 
-Do not expand the ask. Follow /tdd, /implement, /unslop. Use /mermaid when you write a PR. Put the after-state mermaid on the existing docs page for that subsystem in the same PR. No per-PR copy. README or QUICKSTART only when the diagram is user-facing. Internals stay in docs.
+Do not expand the ask. Follow /tdd, /implement, /unslop. Use /mermaid when you write a PR.
 Check for relevant skills before writing code and follow their conventions.
 If the ticket came from a funnel or feature-performance signal, keep the change on that path.
 Work only on the ticket in this prompt. New branch off main.

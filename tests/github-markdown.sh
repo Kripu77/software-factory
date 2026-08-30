@@ -16,25 +16,20 @@ need_text() {
   grep -q -- "$pat" "$ROOT/$file" || fail "$file missing /$pat/"
 }
 
-# HARD, AGENTS.md, implement, and review all state the GitHub Flavored Markdown rules
-for f in factory.sh AGENTS.md skills/implement/SKILL.md lanes/review.md; do
+# Writing GFM lives in HARD and AGENTS.md. Review fail rules live in the review lane.
+for f in factory.sh AGENTS.md; do
   need_text "$f" "short paragraphs"
   need_text "$f" "blank line before any list or fence"
   need_text "$f" "starts with #n"
   need_text "$f" "markdown link"
 done
 
-# Issue 58 is unchanged: 3-sentence cap, then mermaid, in the same files
 for f in factory.sh AGENTS.md skills/implement/SKILL.md; do
   need_text "$f" "at most 3 sentences"
   need_text "$f" "then mermaid"
 done
 
-need_text factory.sh "wall of text"
-need_text factory.sh "Review requests changes"
-need_text factory.sh "those diagrams are missing"
 need_text factory.sh "docs tree"
-need_text factory.sh "after-state belongs in docs"
 need_text factory.sh "missing architecture page"
 need_text factory.sh "persist only the corrected after-state"
 need_text lanes/review.md "Request changes"
@@ -42,14 +37,8 @@ need_text lanes/review.md "wall of text"
 need_text lanes/review.md "mermaid"
 need_text lanes/review.md "missing"
 need_text lanes/review.md "after-state belongs in docs"
-need_text commands/review.md "Request changes"
-need_text commands/review.md "wall of text"
-need_text commands/review.md "mermaid"
-need_text commands/review.md "missing"
-need_text commands/review.md "after-state belongs in docs"
-need_text factory.sh "review summary may use headings"
-need_text AGENTS.md "review summary may use headings"
 need_text lanes/review.md "review summary may use headings"
+need_text AGENTS.md "review summary may use headings"
 
 # Ledger ticket_comment shape is unchanged
 need_text factory.sh 'body="$SUMMARY"'
