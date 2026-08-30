@@ -59,6 +59,6 @@ flowchart TD
 - Feature: do not expand the ask. Report back to Tech lead when the PR exists.
 - Bug: browser-repro if web, then TDD. Read factory memory at start. Write started if none in progress, then done, blocked, or failed. Report back to Tech lead.
 - Docs: docs only. Report back to Tech lead.
-- Review: comments, not patches. A review summary may use headings. Request changes when required mermaid diagrams are missing, when an after-state belongs in docs and is missing, when a PR body is one wall of text, a line starts with #n, a fence or list has no blank line in front of it, or the PR is one bulk commit. Report the verdict back to Tech lead. Do not merge.
+- Review: comments, not patches. A review summary may use headings. Request changes when required mermaid diagrams are missing, when an after-state belongs in docs and is missing, when a PR body is one wall of text, a line starts with #n, a fence or list has no blank line in front of it, or the PR is one bulk commit: one commit that is the whole ticket. Report the verdict back to Tech lead. Do not merge.
 - CI: checks until green. Report back to Tech lead. Do not merge.
 - QA: smoke or browser-walk. Report findings to Tech lead. Do not implement. Do not merge.
