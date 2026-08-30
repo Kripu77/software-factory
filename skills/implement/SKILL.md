@@ -33,7 +33,7 @@ gh api graphql -f query='mutation($id:ID!,$body:String!){addPullRequestReviewThr
 ## Extra rules
 
 - No code comments
-- Small focused changes
+- Commit one complete thought at a time. The message names that thought. Keep the diff small. If the thought would be huge, split the ticket. No line-count cap.
 - Do not refactor adjacent code unless the ticket says so
 - No type assertions; follow local TypeScript/Go practice
 - PR title: `Type/<issue.number>/<short description>` (Feat, Bug, Arch, Chore, Refactor, General)
