@@ -2,6 +2,14 @@
 set -euo pipefail
 
 FACTORY="$(cd "$(dirname "$0")" && pwd)"
+if [[ -L "$0" ]]; then
+  _factory_target="$(readlink "$0" 2>/dev/null || true)"
+  if [[ -n "$_factory_target" ]]; then
+    [[ "$_factory_target" == /* ]] || _factory_target="$FACTORY/$_factory_target"
+    FACTORY="$(cd "$(dirname "$_factory_target")" && pwd)"
+  fi
+  unset _factory_target
+fi
 WORKSPACE="${FACTORY_WORKSPACE:-$PWD}"
 OWNER="${FACTORY_OWNER:-}"
 RUNNER="${FACTORY_RUNNER:-}"
@@ -19,6 +27,7 @@ Usage:
   factory.sh config           [--repo <name>]  prints the current tracker and skills
   factory.sh config tracker   github|linear [--team <linear-team-key>] [--repo <name>]
   factory.sh config skills    "<skill-name>: <when it applies>" [more...] [--repo <name>]
+  factory.sh setup            [--repo <name>]  interactive setup for tracker and skills
   factory.sh mem read         [--issue <n>] [--pr <n>] [--project owner/name] [--limit n]
   factory.sh mem write        --lane <lane> --status started|done|blocked|failed [--harness claude|codex|cursor|grok] [--issue <n>] [--pr <n>] [--project owner/name] [--summary s] [--next-steps s] [--evidence url-or-json]
   factory.sh close-linked     --pr <n> [--repo name] [--owner org]
@@ -99,6 +108,19 @@ if [[ "$LANE" == "config" ]]; then
           usage
         fi
         shift ;;
+    esac
+  done
+elif [[ "$LANE" == "setup" ]]; then
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --repo) REPO="${2:-}"; CONFIG_REPO_FLAG=1; shift 2 ;;
+      --yes)
+        echo "factory setup is interactive. Use factory.sh config for scripts." >&2
+        exit 1
+        ;;
+      -h|--help) usage ;;
+      --*) echo "Unknown arg: $1" >&2; usage ;;
+      *) echo "Unknown arg: $1" >&2; usage ;;
     esac
   done
 elif [[ "$LANE" == "mem" ]]; then
@@ -220,21 +242,37 @@ factory_exclude() {
   printf '.factory/\n' >> "$exclude"
 }
 
-config_show() {
-  local dir="$1" tracker="github" team="" line
+config_read() {
+  local dir="$1" line
+  CONFIG_TRACKER="github"
+  CONFIG_TEAM=""
+  CONFIG_LINES=()
+  CONFIG_EXISTS=0
   if [[ -f "$dir/.factory/config" ]]; then
+    CONFIG_EXISTS=1
     while IFS= read -r line || [[ -n "$line" ]]; do
       case "$line" in
-        tracker=*) tracker="${line#tracker=}" ;;
-        team=*) team="${line#team=}" ;;
+        tracker=*) CONFIG_TRACKER="${line#tracker=}" ;;
+        team=*) CONFIG_TEAM="${line#team=}" ;;
       esac
     done < "$dir/.factory/config"
   fi
-  printf 'tracker %s\n' "$tracker"
-  [[ -z "$team" ]] || printf 'team %s\n' "$team"
   if [[ -s "$dir/.factory/conventions" ]]; then
+    CONFIG_EXISTS=1
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      [[ -n "$line" ]] && CONFIG_LINES+=("$line")
+    done < "$dir/.factory/conventions"
+  fi
+}
+
+config_show() {
+  local dir="$1"
+  config_read "$dir"
+  printf 'tracker %s\n' "$CONFIG_TRACKER"
+  [[ -z "$CONFIG_TEAM" ]] || printf 'team %s\n' "$CONFIG_TEAM"
+  if (( ${#CONFIG_LINES[@]} > 0 )); then
     printf 'skills:\n'
-    cat "$dir/.factory/conventions"
+    printf '%s\n' "${CONFIG_LINES[@]}"
   else
     printf 'skills: none\n'
   fi
@@ -257,6 +295,18 @@ config_tracker() {
   config_show "$dir"
 }
 
+config_write_conventions() {
+  local dir="$1"
+  shift
+  mkdir -p "$dir/.factory"
+  factory_exclude "$dir"
+  if [[ $# -eq 0 ]]; then
+    : > "$dir/.factory/conventions"
+  else
+    printf '%s\n' "$@" > "$dir/.factory/conventions"
+  fi
+}
+
 config_skills() {
   local dir="$1" entry
   shift
@@ -264,9 +314,7 @@ config_skills() {
   for entry in "$@"; do
     [[ "$entry" == *": "* && "$entry" != *$'\n'* ]] || { echo "Skills entries are one line each: \"<skill-name>: <when it applies>\", got: $entry" >&2; exit 1; }
   done
-  mkdir -p "$dir/.factory"
-  factory_exclude "$dir"
-  printf '%s\n' "$@" > "$dir/.factory/conventions"
+  config_write_conventions "$dir" "$@"
   config_show "$dir"
 }
 
@@ -1067,6 +1115,12 @@ case "$LANE" in
       skills) config_skills "$DIR" ${CONFIG_ARGS[@]+"${CONFIG_ARGS[@]}"} ;;
       *) config_show "$DIR" ;;
     esac
+    ;;
+  setup)
+    DIR="$(config_dir)"
+    source "$FACTORY/lib/setup.sh"
+    setup_run "$DIR"
+    exit $?
     ;;
   feature|bug|docs)
     need_issue
