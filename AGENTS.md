@@ -47,7 +47,9 @@ flowchart TD
   before[Bug before-state] --> pr[PR only]
   review[Review] --> gap{After-state belongs in docs and is missing?}
   gap -->|yes| changes[Request changes]
-  gap -->|no| comments[Review comments]
+  gap -->|no| bulk{One bulk commit?}
+  bulk -->|yes| changes
+  bulk -->|no| comments[Review comments]
 ```
 
 ## Lanes
