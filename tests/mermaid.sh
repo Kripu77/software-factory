@@ -110,9 +110,17 @@ need_text commands/docs.md "Use /mermaid when you write a PR"
 need_text lanes/review.md "mermaid"
 need_text lanes/review.md "missing"
 need_text lanes/review.md "Request changes"
-need_text commands/review.md "mermaid"
-need_text commands/review.md "missing"
-need_text factory.sh "Review requests changes"
+need_text lanes/review.md "after-state belongs in docs"
+
+# After-state mermaid persists into the product docs tree
+need_text factory.sh "docs tree"
+need_text factory.sh "missing architecture page"
+need_text factory.sh "persist only the corrected after-state"
+need_text factory.sh "Do not add a new file per PR"
+need_text factory.sh "user-facing"
+need_text AGENTS.md "docs tree"
+need_text AGENTS.md "missing architecture page"
+need_text AGENTS.md "persist only the corrected after-state"
 
 WS="$TMP/workspace"
 mkdir -p "$WS/widgets"
@@ -161,6 +169,10 @@ assert_rules() {
   grep -q "at most 3 sentences" "$DUMP/rules" || fail "$lane rules missing 3-sentence cap"
   grep -q "then mermaid" "$DUMP/rules" || fail "$lane rules missing mermaid-after-prose"
   grep -q "/mermaid" "$DUMP/rules" || fail "$lane rules missing /mermaid"
+  grep -q "docs tree" "$DUMP/rules" || fail "$lane rules missing persist-into-docs"
+  grep -q "missing architecture page" "$DUMP/rules" || fail "$lane rules missing missing-page exception"
+  grep -q "Do not add a new file per PR" "$DUMP/rules" || fail "$lane rules missing no-per-PR-copy"
+  grep -q "user-facing" "$DUMP/rules" || fail "$lane rules missing README-versus-docs"
 }
 
 assert_rules feature --issue 6
@@ -175,6 +187,7 @@ grep -q "at most 3 sentences" "$DUMP/rules" || fail "review rules missing 3-sent
 grep -q "then mermaid" "$DUMP/rules" || fail "review rules missing mermaid-after-prose"
 grep -q "Request changes" "$DUMP/rules" || fail "review rules missing request-changes"
 grep -q "missing" "$DUMP/rules" || fail "review rules missing diagrams-missing"
+grep -q "after-state belongs in docs" "$DUMP/rules" || fail "review rules missing persist request-changes"
 grep -q "Never merge" "$DUMP/rules" || fail "review rules must still say never merge"
 
 echo "ok mermaid"
