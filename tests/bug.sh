@@ -65,6 +65,37 @@ exit "${AGENT_EXIT:-0}"
 EOF
 chmod +x "$TMP/bin/runner"
 
+cat > "$TMP/bin/gh" << 'EOF'
+#!/usr/bin/env bash
+dump="${FAKE_DUMP:?}"
+printf '%s\n' "$*" >> "$dump/gh"
+cmd1="${1:-}"
+cmd2="${2:-}"
+body=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --body) body="${2:-}"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+if [[ -n "$body" ]]; then
+  printf '%s\n' "$body" > "$dump/comment-body"
+fi
+case "$cmd1 $cmd2" in
+  "issue view")
+    printf '%s\n' 'id=5'
+    printf '%s\n' 'title=Fix the checkout drop-off'
+    printf '%s\n' 'url=https://github.com/acme/widgets/issues/5'
+    printf '%s\n' 'status=open'
+    printf '%s\n' 'labels=bug,ready-for-agent'
+    printf '%s\n' 'body:'
+    printf '%s\n' 'Reproduce then fix.'
+    ;;
+esac
+exit 0
+EOF
+chmod +x "$TMP/bin/gh"
+
 run_bug() {
   PATH="$TMP/bin:$PATH" \
     FAKE_DUMP="$DUMP" \
@@ -178,6 +209,7 @@ for cmd in bash mkdir date sed git grep dirname cat rm mktemp printf; do
   [[ -n "$src" ]] && ln -sf "$src" "$hid/$cmd"
 done
 cp "$TMP/bin/runner" "$hid/runner"
+cp "$TMP/bin/gh" "$hid/gh"
 rm -rf "$DUMP" "$TMP/memory"
 mkdir -p "$DUMP"
 set +e

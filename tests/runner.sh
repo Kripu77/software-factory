@@ -36,6 +36,23 @@ EOF
   chmod +x "$BIN/$name"
 }
 
+cat > "$BIN/gh" << 'EOF'
+#!/usr/bin/env bash
+case "$1 $2" in
+  "issue view")
+    printf '%s\n' 'id=1'
+    printf '%s\n' 'title=Add widgets list'
+    printf '%s\n' 'url=https://github.com/acme/widgets/issues/1'
+    printf '%s\n' 'status=open'
+    printf '%s\n' 'labels=enhancement,ready-for-agent'
+    printf '%s\n' 'body:'
+    printf '%s\n' 'Ship a list of widgets.'
+    ;;
+esac
+exit 0
+EOF
+chmod +x "$BIN/gh"
+
 # No worker CLI
 set +e
 PATH="$BIN" FACTORY_RUNNER= "$FACTORY" feature --repo widgets --issue 1 >"$TMP/out" 2>"$TMP/err"

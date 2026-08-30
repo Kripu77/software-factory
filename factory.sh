@@ -5,6 +5,7 @@ FACTORY="$(cd "$(dirname "$0")" && pwd)"
 WORKSPACE="${FACTORY_WORKSPACE:-$PWD}"
 OWNER="${FACTORY_OWNER:-}"
 RUNNER="${FACTORY_RUNNER:-}"
+. "$FACTORY/tracker/tracker.sh"
 
 usage() {
   cat <<EOF
@@ -26,6 +27,7 @@ Usage:
 Never merges. A person merges.
 Workspace defaults to this directory. Owner and repo default from git remote origin. FACTORY_RUNNER if more than one of claude, codex, grok is on PATH.
 Memory: FACTORY_MEMORY_DB (default ~/.factory/memory/factory.db). Optional. Missing db warns and continues.
+Issue tracker: GitHub gh is the default. FACTORY_TRACKER_CMD is an MCP command that speaks tracker/CONTRACT.md (get <id>, comment <id> --body).
 EOF
   exit 1
 }
@@ -685,21 +687,22 @@ ticket_comment() {
     *) return 0 ;;
   esac
   [[ -n "${SUMMARY:-}" ]] || return 0
-  [[ -n "${OWNER:-}" && -n "${REPO:-}" ]] || return 0
   [[ -n "${ISSUE:-}" || -n "${PR:-}" ]] || return 0
-  command -v gh >/dev/null 2>&1 || { warn_mem "gh not installed"; return 0; }
   body="$SUMMARY"
-  if [[ -n "${PR:-}" ]]; then
+  if [[ -n "${PR:-}" && -n "${OWNER:-}" && -n "${REPO:-}" ]]; then
     body+=$'\n\n'"[PR ${PR}]($(pr_url "$PR"))"
   fi
   err="$(mktemp)"
   set +e
   if [[ -n "${ISSUE:-}" ]]; then
-    gh issue comment "$ISSUE" -R "${OWNER}/${REPO}" --body "$body" >/dev/null 2>"$err"
+    ticket_issue_comment "$body" "$err"
+    code=$?
   else
+    [[ -n "${OWNER:-}" && -n "${REPO:-}" ]] || { rm -f "$err"; return 0; }
+    command -v gh >/dev/null 2>&1 || { warn_mem "gh not installed"; rm -f "$err"; return 0; }
     gh pr comment "$PR" -R "${OWNER}/${REPO}" --body "$body" >/dev/null 2>"$err"
+    code=$?
   fi
-  code=$?
   set -e
   if [[ $code -ne 0 ]]; then
     warn_mem "$(cat "$err")"
@@ -832,14 +835,16 @@ run_mem_lane() {
 
 floor_classify() {
   local name
-  command -v gh >/dev/null 2>&1 || { printf '%s\n' feature; return 0; }
-  [[ -n "$OWNER" && -n "$REPO" ]] || { printf '%s\n' feature; return 0; }
+  ticket_get || return 1
+  [[ -n "${TICKET_LABELS:-}" ]] || { printf '%s\n' feature; return 0; }
   while IFS= read -r name; do
+    name="${name#"${name%%[![:space:]]*}"}"
+    name="${name%"${name##*[![:space:]]}"}"
     case "$name" in
       bug) printf '%s\n' bug; return 0 ;;
       documentation|docs) printf '%s\n' docs; return 0 ;;
     esac
-  done < <(gh issue view "$ISSUE" -R "${OWNER}/${REPO}" --json labels --template '{{range .labels}}{{.name}}{{"\n"}}{{end}}' 2>/dev/null || true)
+  done <<< "${TICKET_LABELS//,/$'\n'}"
   printf '%s\n' feature
 }
 
@@ -933,7 +938,7 @@ floor_next() {
       failed) printf '%s\n' stop:failed; return 0 ;;
     esac
   done
-  impl="$(floor_classify)"
+  impl="$(floor_classify)" || return 1
   if [[ "$impl" == bug ]]; then
     s="$(printf '%s\n' "$raw" | latest_lane_status telemetry)"
     if [[ -z "$s" && -z "${FLOOR_DID_TEL:-}" ]]; then
@@ -991,7 +996,7 @@ floor_run() {
     pr="$(floor_pr_from_mem)"
     [[ -n "$pr" ]] || pr="$(floor_pr_from_gh)"
     [[ -n "$pr" ]] && PR="$pr"
-    next="$(floor_next)"
+    next="$(floor_next)" || return 1
     case "$next" in
       stop:blocked)
         echo "blocked. stop."
@@ -1074,7 +1079,8 @@ case "$LANE" in
     RULES="$(cat "$FACTORY/lanes/${LANE}.md")"$'\n'"$HARD"
     CONVENTIONS="$(conventions_rules "$DIR")"
     [[ -z "$CONVENTIONS" ]] || RULES+=$'\n'"$CONVENTIONS"
-    run_mem_lane "$LANE" "$DIR" "$RULES" "Implement GitHub issue $(issue_url "$ISSUE") in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."
+    ctx="$(ticket_context)" || exit 1
+    run_mem_lane "$LANE" "$DIR" "$RULES" "Implement this ticket in the ${REPO} checkout. Open a PR against main. Print the PR URL. Do not merge."$'\n\n'"$ctx"
     exit $?
     ;;
   review)
@@ -1107,6 +1113,8 @@ case "$LANE" in
     need_issue
     mem_read_context
     prompt="Ticket or update work for issue ${ISSUE}. Follow /to-tickets. Owning repo: ${REPO:-unknown}. Owner: ${OWNER:-unknown}. After tickets exist, start factory.sh floor --repo ${REPO:-<repo>} --issue ${ISSUE} (or one factory.sh lane). Dispatch is factory.sh only. Writing product code, leaving a review, or watching CI in this session is a failed run."
+    ctx="$(ticket_context)" || exit 1
+    prompt+=$'\n\n'"$ctx"
     if [[ -n "${MEM_CONTEXT:-}" ]]; then
       prompt+=$'\n\n'"Factory memory:"$'\n'"$MEM_CONTEXT"
     fi
