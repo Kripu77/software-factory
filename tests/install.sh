@@ -17,6 +17,7 @@ grep -qi -- "best-effort" "$ROOT/README.md" || fail "README.md missing /best-eff
 need_text README.md "Handoff"
 need_text README.md "factory.sh floor"
 need_text README.md "/lead"
+need_text README.md "factory-lead"
 need_text README.md "public ledger"
 need_text README.md "hint"
 need_text README.md "FACTORY_RUNNER"
@@ -41,7 +42,7 @@ while IFS= read -r skill; do
 done < <(sed -n 's/.*for skill in \(.*\); do/\1/p' "$ROOT/install.sh" | tr ' ' '\n')
 
 hid="$TMP/bin"
-mkdir -p "$hid"
+mkdir -p "$hid" "$TMP/.codex"
 for cmd in bash mkdir ln rm echo grep command cat cp; do
   src="$(command -v "$cmd" || true)"
   [[ -n "$src" ]] && ln -sf "$src" "$hid/$cmd"
@@ -51,6 +52,8 @@ HOME="$TMP" PATH="$hid" "$ROOT/install.sh" >"$TMP/out" 2>"$TMP/err" || fail "ins
 [[ -d "$TMP/.factory/memory" ]] || fail "install should create ~/.factory/memory"
 [[ -L "$TMP/.local/bin/factory" ]] || fail "install should put factory on ~/.local/bin"
 [[ "$(readlink "$TMP/.local/bin/factory")" == "$ROOT/factory.sh" ]] || fail "factory symlink should point at factory.sh"
+[[ -L "$TMP/.codex/skills/factory-lead" ]] || fail "Codex install should expose factory-lead"
+[[ "$(readlink "$TMP/.codex/skills/factory-lead")" == "$ROOT/skills/lead" ]] || fail "Codex factory-lead should point at the lead skill"
 grep -q "memory " "$TMP/out" || fail "install should mention memory: $(cat "$TMP/out")"
 grep -qi "lead" "$TMP/out" || fail "install should tell you to /lead: $(cat "$TMP/out")"
 [[ ! -e "$TMP/.claude-mem" ]] || fail "install must not create other plugin dirs"

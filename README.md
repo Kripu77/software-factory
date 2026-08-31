@@ -15,7 +15,7 @@ Issue tracking is a plug. GitHub is the default. `factory.sh config tracker gith
 
 ## How it runs
 
-Open one CLI. `/lead` or `factory.sh lead` classifies, quizzes, and tickets. It does not write product code. After tickets exist it starts `factory.sh floor`. If the lead session implements, reviews, or watches CI, that run failed.
+Open one CLI. `/lead` or `factory.sh lead` classifies, quizzes, and tickets. In Codex, use the `factory-lead` skill for the same job. It does not write product code. After tickets exist it starts `factory.sh floor`. If the lead session implements, reviews, or watches CI, that run failed.
 
 Floor is bash. It starts one isolated `factory.sh` lane, waits, then starts the next. Each worker is a new process with that lane's rules. Floor does not implement. Floor does not merge.
 
@@ -24,6 +24,15 @@ Order is implement (feature, bug, or docs), then QA if you passed a URL, else sk
 Lanes report back. They do not dispatch the next lane. Tech lead or floor does.
 
 Cursor is a slash-command door, not a `factory.sh --runner`. `/lead` in Cursor starts `factory.sh`, which needs Claude, Codex, or Grok on PATH. Two of those installed means you set `FACTORY_RUNNER` or `--runner`. One installed means `factory.sh` uses it. It does not prefer Grok.
+
+Codex uses the `factory-lead` skill rather than a slash command.
+
+```mermaid
+flowchart LR
+    codex[Codex] --> lead[factory-lead]
+    lead --> tickets[factory-to-tickets]
+    tickets --> floor[factory floor]
+```
 
 ## Handoff and hand back
 
@@ -78,7 +87,7 @@ Cursor:
 
 Add GitHub marketplace `Kripu77/software-factory` at tag `v1.1.1`, then install software-factory.
 
-`/lead` loads. So do the other factory commands. Codex gets the skills.
+`/lead` loads in Claude Code, Grok Build, and Cursor. Codex gets `factory-lead` and the other factory skills.
 
 Clone plus `./install.sh` is the from-source path:
 
@@ -112,13 +121,14 @@ Owner and repo come from `git remote`. Workspace is this directory. Put `~/.loca
 | Cursor | GitHub marketplace at the Release tag, or local plugin at `~/.cursor/plugins/local/software-factory` |
 | Claude Code | marketplace plugin at the Release tag, or skills + slash commands under `~/.claude` |
 | Grok Build | GitHub shorthand at the Release tag, or `grok plugin install . --trust` from a clone |
-| Codex | marketplace plugin at the Release tag, or skills under `~/.codex/skills` plus `AGENTS.md` |
+| Codex | marketplace plugin at the Release tag, or `factory-lead` and the other skills under `~/.codex/skills` plus `AGENTS.md` |
 
 ## Run
 
-Start at lead:
+Start at lead with owner/repo#issue:
 
-- `/lead` with owner/repo#issue
+- Claude Code, Grok Build, and Cursor: `/lead`
+- Codex: `factory-lead`
 
 Or one lane, still one ticket:
 
