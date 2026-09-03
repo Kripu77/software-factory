@@ -1,7 +1,7 @@
 {
   "name": "software-factory",
   "displayName": "Software factory",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Lanes, tickets, and a human merge. Skills and commands for Cursor, Claude, Grok, and Codex.",
   "author": {
     "name": "Kripu Khadka"
