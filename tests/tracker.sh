@@ -403,10 +403,10 @@ grep -q 'gh pr comment' "$FACTORY" || fail "review comments should still use gh 
 if [[ -d "$ROOT/tracker/adapters" ]]; then
   fail "this slice must not add tracker adapter folders"
 fi
-if grep -n -E 'linear\.app/api|api\.linear\.app|atlassian\.net|jira\.com/rest' "$ROOT/factory.sh" "$ROOT/tracker/tracker.sh"; then
+if grep -RIn -E 'linear\.app/api|api\.linear\.app|atlassian\.net|jira\.com/rest' "$ROOT" --exclude-dir .git --exclude-dir skills --exclude 'tracker.sh'; then
   fail "no Linear or Jira API adapter code"
 fi
-if grep -n -E 'LINEAR_API|JIRA_API|JIRA_TOKEN|LINEAR_KEY' "$ROOT/factory.sh" "$ROOT/tracker/tracker.sh"; then
+if grep -RIn -E 'LINEAR_API|JIRA_API|JIRA_TOKEN|LINEAR_KEY' "$ROOT" --exclude-dir .git --exclude 'tracker.sh'; then
   fail "no Linear or Jira API secrets or clients"
 fi
 

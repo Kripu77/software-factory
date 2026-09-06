@@ -56,7 +56,7 @@ cat > "$TMP/bin/gh" << 'EOF'
 #!/usr/bin/env bash
 case "$1 $2" in
   "issue view")
-    printf '%s\n' 'id=6'
+    printf '%s\n' "id=${3:-}"
     printf '%s\n' 'title=Add widgets list'
     printf '%s\n' 'url=https://github.com/acme/widgets/issues/6'
     printf '%s\n' 'status=open'
