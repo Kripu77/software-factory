@@ -724,11 +724,17 @@ warn_mem() {
 }
 
 ticket_comment() {
-  local body err code lane="${1:-${RUN_LANE:-$LANE}}"
+  local body err code dir lane="${1:-${RUN_LANE:-$LANE}}"
   case "$lane" in
     feature|docs|qa|review|ci|telemetry) ;;
     *) return 0 ;;
   esac
+  if [[ "$lane" == review && -n "${REPO:-}" ]]; then
+    dir="$(repo_dir 2>/dev/null || true)"
+    if [[ -n "$dir" ]] && localreview_on "$dir"; then
+      return 0
+    fi
+  fi
   case "${STATUS:-}" in
     done|blocked|failed) ;;
     *) return 0 ;;
@@ -1137,10 +1143,16 @@ case "$LANE" in
   review)
     need_pr
     DIR="$(repo_dir)"
-    RULES="$(cat "$FACTORY/lanes/review.md")"$'\n'"$HARD"
+    if localreview_on "$DIR"; then
+      RULES="$(cat "$FACTORY/lanes/review-local.md")"$'\n'"$HARD"
+      PROMPT="Review $(pr_url "$PR") only. Use /code-review. Write findings to ~/.factory/reviews/${OWNER}-${REPO}-pr${PR}.md, not the PR. Do not implement. Do not merge."
+    else
+      RULES="$(cat "$FACTORY/lanes/review.md")"$'\n'"$HARD"
+      PROMPT="Review $(pr_url "$PR") only. Use /code-review. Do not implement. Do not merge."
+    fi
     CONVENTIONS="$(conventions_rules "$DIR")"
     [[ -z "$CONVENTIONS" ]] || RULES+=$'\n'"$CONVENTIONS"
-    run_mem_lane review "$DIR" "$RULES" "Review $(pr_url "$PR") only. Use /code-review. Do not implement. Do not merge."
+    run_mem_lane review "$DIR" "$RULES" "$PROMPT"
     exit $?
     ;;
   ci)
