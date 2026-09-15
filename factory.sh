@@ -20,6 +20,7 @@ Usage:
   factory.sh config           [--repo <name>]  prints the current tracker and skills
   factory.sh config tracker   github|linear [--team <linear-team-key>] [--repo <name>]
   factory.sh config skills    "<skill-name>: <when it applies>" [more...] [--repo <name>]
+  factory.sh config localreview on|off [--repo <name>]  review findings land in ~/.factory/reviews, not on the PR
   factory.sh mem read         [--issue <n>] [--pr <n>] [--project owner/name] [--limit n]
   factory.sh mem write        --lane <lane> --status started|done|blocked|failed [--harness claude|codex|cursor|grok] [--issue <n>] [--pr <n>] [--project owner/name] [--summary s] [--next-steps s] [--evidence url-or-json]
   factory.sh close-linked     --pr <n> [--repo name] [--owner org]
@@ -94,7 +95,7 @@ if [[ "$LANE" == "config" ]]; then
       *)
         if [[ -n "$CONFIG_CMD" ]]; then
           CONFIG_ARGS+=("$1")
-        elif [[ "$1" == "tracker" || "$1" == "skills" ]]; then
+        elif [[ "$1" == "tracker" || "$1" == "skills" || "$1" == "localreview" ]]; then
           CONFIG_CMD="$1"
         else
           echo "Unknown config command: $1" >&2
@@ -223,17 +224,19 @@ factory_exclude() {
 }
 
 config_show() {
-  local dir="$1" tracker="github" team="" line
+  local dir="$1" tracker="github" team="" localreview="off" line
   if [[ -f "$dir/.factory/config" ]]; then
     while IFS= read -r line || [[ -n "$line" ]]; do
       case "$line" in
         tracker=*) tracker="${line#tracker=}" ;;
         team=*) team="${line#team=}" ;;
+        localreview=*) localreview="${line#localreview=}" ;;
       esac
     done < "$dir/.factory/config"
   fi
   printf 'tracker %s\n' "$tracker"
   [[ -z "$team" ]] || printf 'team %s\n' "$team"
+  printf 'localreview %s\n' "$localreview"
   if [[ -s "$dir/.factory/conventions" ]]; then
     printf 'skills:\n'
     cat "$dir/.factory/conventions"
@@ -243,12 +246,19 @@ config_show() {
 }
 
 config_tracker() {
-  local dir="$1" tracker="${2:-}"
+  local dir="$1" tracker="${2:-}" localreview="" line
   case "$tracker" in
     github) ;;
     linear) [[ -n "$TEAM" ]] || { echo "Tracker linear needs --team <linear-team-key>" >&2; exit 1; } ;;
     *) echo "Tracker must be github or linear" >&2; exit 1 ;;
   esac
+  if [[ -f "$dir/.factory/config" ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      case "$line" in
+        localreview=*) localreview="${line#localreview=}" ;;
+      esac
+    done < "$dir/.factory/config"
+  fi
   mkdir -p "$dir/.factory"
   factory_exclude "$dir"
   if [[ "$tracker" == linear ]]; then
@@ -256,7 +266,44 @@ config_tracker() {
   else
     printf 'tracker=github\n' > "$dir/.factory/config"
   fi
+  [[ -z "$localreview" ]] || printf 'localreview=%s\n' "$localreview" >> "$dir/.factory/config"
   config_show "$dir"
+}
+
+config_localreview() {
+  local dir="$1" value="${2:-}" tracker="github" team="" line
+  case "$value" in
+    on|off) ;;
+    *) echo "Localreview must be on or off" >&2; exit 1 ;;
+  esac
+  if [[ -f "$dir/.factory/config" ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      case "$line" in
+        tracker=*) tracker="${line#tracker=}" ;;
+        team=*) team="${line#team=}" ;;
+      esac
+    done < "$dir/.factory/config"
+  fi
+  mkdir -p "$dir/.factory"
+  factory_exclude "$dir"
+  if [[ "$tracker" == linear ]]; then
+    printf 'tracker=linear\nteam=%s\n' "$team" > "$dir/.factory/config"
+  else
+    printf 'tracker=github\n' > "$dir/.factory/config"
+  fi
+  [[ "$value" == off ]] || printf 'localreview=on\n' >> "$dir/.factory/config"
+  config_show "$dir"
+}
+
+localreview_on() {
+  local dir="$1" line
+  [[ -f "$dir/.factory/config" ]] || return 1
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    case "$line" in
+      localreview=on) return 0 ;;
+    esac
+  done < "$dir/.factory/config"
+  return 1
 }
 
 config_skills() {
@@ -1070,6 +1117,10 @@ case "$LANE" in
         config_tracker "$DIR" "${CONFIG_ARGS[0]:-}"
         ;;
       skills) config_skills "$DIR" ${CONFIG_ARGS[@]+"${CONFIG_ARGS[@]}"} ;;
+      localreview)
+        [[ ${#CONFIG_ARGS[@]} -le 1 ]] || { echo "config localreview takes one value: factory.sh config localreview <on|off>" >&2; exit 1; }
+        config_localreview "$DIR" "${CONFIG_ARGS[0]:-}"
+        ;;
       *) config_show "$DIR" ;;
     esac
     ;;

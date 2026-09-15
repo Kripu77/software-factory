@@ -114,6 +114,27 @@ grep -qxF "tracker=github" "$WS/wtree/.worktrees/wt/.factory/config" || fail "wo
 cfg tracker github linear >/dev/null 2>&1 && fail "config tracker with extra args must fail"
 grep -qxF "tracker=github" "$WS/widgets/.factory/config" || fail "rejected tracker args must not change config"
 
+# localreview defaults off, toggles on and off, and survives a tracker rewrite
+out="$(cfg)"
+grep -q "localreview off" <<< "$out" || fail "default localreview should be off, got: $out"
+cfg localreview on >/dev/null
+grep -qxF "localreview=on" "$WS/widgets/.factory/config" || fail "localreview should be stored in .factory/config"
+out="$(cfg)"
+grep -q "localreview on" <<< "$out" || fail "config should show localreview on, got: $out"
+cfg tracker github >/dev/null
+out="$(cfg)"
+grep -q "localreview on" <<< "$out" || fail "tracker rewrite should keep localreview, got: $out"
+cfg localreview off >/dev/null
+out="$(cfg)"
+grep -q "localreview off" <<< "$out" || fail "config should show localreview off, got: $out"
+grep -qxF "tracker=github" "$WS/widgets/.factory/config" || fail "localreview must not drop the tracker"
+
+# Invalid localreview value fails with a usage message
+cfg localreview maybe >/dev/null 2>&1 && fail "localreview maybe must fail"
+out="$(cfg localreview maybe 2>&1 || true)"
+grep -qi "on or off" <<< "$out" || fail "invalid localreview should print a usage message, got: $out"
+cfg localreview on off >/dev/null 2>&1 && fail "config localreview with extra args must fail"
+
 # README documents the subcommand
 grep -q "factory.sh config" "$ROOT/README.md" || fail "README missing factory.sh config"
 
