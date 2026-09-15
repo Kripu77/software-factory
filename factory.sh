@@ -936,6 +936,16 @@ floor_pr_from_gh() {
 }
 
 floor_review_count() {
+  local dir=""
+  dir="$(repo_dir 2>/dev/null || true)"
+  if [[ -n "$dir" ]] && localreview_on "$dir"; then
+    if [[ "$(printf '%s\n' "$(floor_mem)" | latest_lane_status review)" == done ]]; then
+      printf '%s\n' 1
+    else
+      printf '%s\n' 0
+    fi
+    return 0
+  fi
   command -v gh >/dev/null 2>&1 || { printf '%s\n' 0; return 0; }
   [[ -n "${PR:-}" && -n "$OWNER" && -n "$REPO" ]] || { printf '%s\n' 0; return 0; }
   gh pr view "$PR" -R "${OWNER}/${REPO}" --json reviews --template '{{len .reviews}}' 2>/dev/null || printf '%s\n' 0
